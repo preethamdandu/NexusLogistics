@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+target/
+*.jar
+*.class
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.tsbuildinfo
+.eslintcache
+*.pem
+
+# Go binaries
+ingestion-service/cmd/*/main
+ingestion-service/*.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Java
+route-service/target/
+route-service/.mvn/
+route-service/*.iml
+
+# Generated protobuf
+ingestion-service/proto/*.pb.go
+
+# Volumes
+postgres_data/
+
+# Benchmark tools
+*-bench/main

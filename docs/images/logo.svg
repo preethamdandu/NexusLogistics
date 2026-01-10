@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="60" cy="60" r="55" fill="url(#grad1)"/>
+  
+  <!-- Globe lines -->
+  <ellipse cx="60" cy="60" rx="35" ry="35" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+  <ellipse cx="60" cy="60" rx="35" ry="15" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+  <ellipse cx="60" cy="60" rx="15" ry="35" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" fill="none"/>
+  <line x1="25" y1="60" x2="95" y2="60" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+  <line x1="60" y1="25" x2="60" y2="95" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+  
+  <!-- Location pin 1 -->
+  <g transform="translate(45, 40)">
+    <path d="M8 0C3.58 0 0 3.58 0 8c0 5.5 8 14 8 14s8-8.5 8-14c0-4.42-3.58-8-8-8zm0 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z" fill="url(#grad2)"/>
+  </g>
+  
+  <!-- Location pin 2 -->
+  <g transform="translate(65, 55)">
+    <path d="M6 0C2.69 0 0 2.69 0 6c0 4.13 6 10.5 6 10.5s6-6.37 6-10.5c0-3.31-2.69-6-6-6zm0 8.25c-1.24 0-2.25-1.01-2.25-2.25S4.76 3.75 6 3.75 8.25 4.76 8.25 6 7.24 8.25 6 8.25z" fill="#22d3ee"/>
+  </g>
+  
+  <!-- Route line -->
+  <path d="M53 48 Q60 52, 71 61" stroke="url(#grad2)" stroke-width="2.5" stroke-linecap="round" fill="none" stroke-dasharray="4,2"/>
+  
+  <!-- Package box -->
+  <g transform="translate(72, 35)">
+    <rect x="0" y="4" width="16" height="12" rx="1" fill="white" opacity="0.9"/>
+    <rect x="0" y="0" width="16" height="6" rx="1" fill="#06b6d4"/>
+    <line x1="8" y1="0" x2="8" y2="16" stroke="rgba(0,0,0,0.1)" stroke-width="0.5"/>
+  </g>
+</svg>

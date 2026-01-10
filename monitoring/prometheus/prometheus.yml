@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "ingestion-service"
+    static_configs:
+      - targets: ["ingestion-service:9090"]
+
+  - job_name: "tracking-service"
+    static_configs:
+      - targets: ["tracking-service:3000"]
+
+  - job_name: "route-service"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["route-service:8080"]

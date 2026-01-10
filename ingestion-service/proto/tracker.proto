@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package tracker;
+
+option go_package = "github.com/nexus-logistics/ingestion-service/pb";
+
+// The tracker service definition.
+service TrackerService {
+  // Receives a single location ping from a vehicle.
+  rpc SendPing (LocationPing) returns (PingResponse) {}
+}
+
+// The request message containing the vehicle's location.
+message LocationPing {
+  string vehicle_id = 1;
+  double latitude = 2;
+  double longitude = 3;
+  int64 timestamp = 4; // Unix timestamp
+}
+
+// The response message.
+message PingResponse {
+  bool success = 1;
+  string message = 2;
+}

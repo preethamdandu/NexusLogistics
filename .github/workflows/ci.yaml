@@ -1,0 +1,100 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/nexus
+
+jobs:
+  build-ingestion:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Ingestion Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ingestion-service
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/ingestion-service:${{ github.sha }}
+
+  build-tracking:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Tracking Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./tracking-service
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/tracking-service:${{ github.sha }}
+
+  build-route:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Route Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./route-service
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/route-service:${{ github.sha }}
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}

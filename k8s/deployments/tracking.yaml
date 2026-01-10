@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tracking-service
+  namespace: nexus-logistics
+  labels:
+    app: tracking-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: tracking-service
+  template:
+    metadata:
+      labels:
+        app: tracking-service
+    spec:
+      containers:
+        - name: tracking
+          image: nexus/tracking-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "500m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
