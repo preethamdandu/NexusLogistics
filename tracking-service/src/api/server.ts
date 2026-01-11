@@ -235,10 +235,7 @@ app.get('/live/buses', async (req, res) => {
     }
 });
 
-// Keep buses endpoint for backward compatibility
-app.get('/live/buses', async (req, res) => {
-    res.json([]);
-});
+
 
 // Combined endpoint - All live vehicles (trucks + aircraft + buses)
 app.get('/live/all', async (req, res) => {
@@ -332,27 +329,45 @@ app.get('/live/all', async (req, res) => {
             timestamp: Date.now() / 1000
         }));
 
-        // 3. Get simulated buses
+        // 4. Get simulated buses from major US transit systems
         const busRoutes = [
-            { id: 'muni-14-001', route: '14-Mission', lat: 37.7599, lng: -122.4194 },
-            { id: 'muni-38-001', route: '38-Geary', lat: 37.7854, lng: -122.4195 },
-            { id: 'act-51a-001', route: '51A-Broadway', lat: 37.8044, lng: -122.2712 },
-            { id: 'act-72-001', route: '72-MLK', lat: 37.8716, lng: -122.2727 },
+            // West Coast
+            { id: 'muni-14-001', route: 'SF Muni 14', lat: 37.7599, lng: -122.4194 },
+            { id: 'muni-38-001', route: 'SF Muni 38', lat: 37.7854, lng: -122.4195 },
+            { id: 'metro-720-001', route: 'LA Metro 720', lat: 34.0522, lng: -118.2437 },
+            { id: 'metro-720-002', route: 'LA Metro 720', lat: 34.0625, lng: -118.3080 },
+            { id: 'king-001', route: 'Seattle Metro 41', lat: 47.6062, lng: -122.3321 },
+            // Central
+            { id: 'cta-151-001', route: 'Chicago CTA 151', lat: 41.8819, lng: -87.6278 },
+            { id: 'cta-151-002', route: 'Chicago CTA 22', lat: 41.8956, lng: -87.6261 },
+            { id: 'dart-001', route: 'Dallas DART 21', lat: 32.7767, lng: -96.7970 },
+            { id: 'metro-001', route: 'Houston Metro 82', lat: 29.7604, lng: -95.3698 },
+            { id: 'rtd-001', route: 'Denver RTD 15', lat: 39.7392, lng: -104.9903 },
+            // East Coast
+            { id: 'mta-m101-001', route: 'NYC MTA M101', lat: 40.7589, lng: -73.9851 },
+            { id: 'mta-m15-001', route: 'NYC MTA M15', lat: 40.7128, lng: -74.0060 },
+            { id: 'mbta-001', route: 'Boston MBTA 1', lat: 42.3601, lng: -71.0589 },
+            { id: 'septa-001', route: 'Philly SEPTA 42', lat: 39.9526, lng: -75.1652 },
+            { id: 'marta-001', route: 'Atlanta MARTA 110', lat: 33.7490, lng: -84.3880 },
+            { id: 'marta-002', route: 'Atlanta MARTA 12', lat: 33.8490, lng: -84.3730 },
+            { id: 'metrobus-001', route: 'DC Metrobus S2', lat: 38.9072, lng: -77.0369 },
+            { id: 'mdt-001', route: 'Miami-Dade 119', lat: 25.7617, lng: -80.1918 },
         ];
         const buses = busRoutes.map(bus => ({
             vehicle_id: bus.id,
-            latitude: bus.lat + (Math.random() - 0.5) * 0.001,
-            longitude: bus.lng + (Math.random() - 0.5) * 0.001,
+            latitude: bus.lat + (Math.random() - 0.5) * 0.01,
+            longitude: bus.lng + (Math.random() - 0.5) * 0.01,
             type: 'bus',
             route: bus.route,
             timestamp: Date.now() / 1000
         }));
 
-        // Combine all
+        // Combine all vehicles: Redis trucks + aircraft + simulated trucks + buses
         const allVehicles = [
             ...trucks.filter(t => t !== null),
             ...aircraft,
-            ...simulatedTrucks
+            ...simulatedTrucks,
+            ...buses
         ];
 
         res.json(allVehicles);
