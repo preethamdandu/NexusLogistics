@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/actions/workflow/status/your-org/nexus-logistics/ci.yaml?branch=main&style=flat-square&label=CI" alt="CI Status" />
+  <img src="https://img.shields.io/github/actions/workflow/status/preethamdandu/NexusLogistics/ci.yaml?branch=main&style=flat-square&label=CI" alt="CI Status" />
   <img src="https://img.shields.io/badge/coverage-87%25-brightgreen?style=flat-square" alt="Coverage" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome" />
@@ -131,7 +131,7 @@ docker-compose --version  # v2.0+
 
 ```bash
 # Clone and start everything
-git clone https://github.com/your-org/nexus-logistics.git
+git clone https://github.com/preethamdandu/NexusLogistics.git
 cd nexus-logistics
 docker-compose up -d
 
@@ -369,6 +369,64 @@ Content-Type: application/json
 
 </details>
 
+<details>
+<summary><strong>GET /live/all</strong> - Get all live vehicles (aircraft, trucks, buses)</summary>
+
+**Request**
+```http
+GET /api/live/all
+```
+
+**Response** `200 OK`
+```json
+[
+  {
+    "vehicle_id": "aircraft-UAL123",
+    "type": "aircraft",
+    "latitude": 37.6213,
+    "longitude": -122.3790,
+    "callsign": "UAL123",
+    "altitude": 35000
+  },
+  {
+    "vehicle_id": "truck-sf-01",
+    "type": "truck",
+    "latitude": 37.7749,
+    "longitude": -122.4194,
+    "route": "SF Hub"
+  },
+  {
+    "vehicle_id": "bus-muni-14",
+    "type": "bus",
+    "latitude": 37.7850,
+    "longitude": -122.4060,
+    "route": "SF Muni"
+  }
+]
+```
+
+</details>
+
+<details>
+<summary><strong>GET /live/aircraft</strong> - Real-time aircraft from OpenSky Network</summary>
+
+**Response** `200 OK` - Returns up to 100 aircraft over continental US
+```json
+[
+  {
+    "vehicle_id": "aircraft-DAL456",
+    "type": "aircraft",
+    "latitude": 40.6413,
+    "longitude": -73.7781,
+    "callsign": "DAL456",
+    "altitude": 28000,
+    "velocity": 450
+  }
+]
+```
+
+</details>
+
 ---
 
 ## ⚡ Performance
@@ -576,23 +634,23 @@ nexus-logistics/
 │   ├── src/app/              # App router pages
 │   ├── src/components/       # React components
 │   └── Dockerfile
-├── � ingestion-service/     # Go gRPC Service
+├── 📦 ingestion-service/     # Go gRPC Service
 │   ├── cmd/server/           # Main entry
 │   ├── cmd/client/           # Test client
 │   ├── cmd/bench/            # Benchmarking
 │   ├── proto/                # Protocol Buffers
 │   └── Dockerfile
-├── � tracking-service/      # Node.js REST API
+├── 📍 tracking-service/      # Node.js REST API
 │   ├── src/                  # TypeScript source
 │   ├── migrations/           # SQL schemas
 │   └── Dockerfile
 ├── 🧠 route-service/         # Java Spring Boot
 │   ├── src/main/java/        # Java source
 │   └── Dockerfile
-├── � gateway/               # Nginx config
-├── � monitoring/            # Prometheus + Grafana
+├── 🌐 gateway/               # Nginx config
+├── 📊 monitoring/            # Prometheus + Grafana
 ├── ☸️ k8s/                   # Kubernetes manifests
-├── � .github/workflows/     # CI/CD
+├── 🔄 .github/workflows/     # CI/CD
 └── 🐳 docker-compose.yml     # Local orchestration
 ```
 
@@ -646,9 +704,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 </p>
 
 <p align="center">
-  <a href="https://github.com/your-org/nexus-logistics/issues">🐛 Report Bug</a> •
-  <a href="https://github.com/your-org/nexus-logistics/issues">✨ Request Feature</a> •
-  <a href="https://github.com/your-org/nexus-logistics/discussions">💬 Discussions</a>
+  <a href="https://github.com/preethamdandu/NexusLogistics/issues">🐛 Report Bug</a> •
+  <a href="https://github.com/preethamdandu/NexusLogistics/issues">✨ Request Feature</a> •
+  <a href="https://github.com/preethamdandu/NexusLogistics/discussions">💬 Discussions</a>
 </p>
 
 <p align="center">
