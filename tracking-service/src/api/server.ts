@@ -112,8 +112,8 @@ app.get('/health', (req, res) => {
 // OpenSky Network API - Real Aircraft Data
 app.get('/live/aircraft', async (req, res) => {
     try {
-        // SF Bay Area bounding box
-        const bbox = 'lamin=37.3&lomin=-122.6&lamax=37.95&lomax=-121.8';
+        // Continental US bounding box
+        const bbox = 'lamin=24.5&lomin=-125.0&lamax=49.5&lomax=-66.5';
         const response = await fetch(`https://opensky-network.org/api/states/all?${bbox}`);
 
         if (!response.ok) {
@@ -131,8 +131,8 @@ app.get('/live/aircraft', async (req, res) => {
         // OpenSky state vector: [icao24, callsign, origin_country, time_position, last_contact, 
         //                        longitude, latitude, baro_altitude, on_ground, velocity, ...]
         const aircraft = data.states
-            .filter((state: any[]) => state[5] && state[6]) // Must have lon/lat
-            .slice(0, 30) // Limit to 30 aircraft
+            .filter((state: any[]) => state[5] && state[6] && !state[8]) // Must have lon/lat and be airborne
+            .slice(0, 100) // Limit to 100 aircraft across US
             .map((state: any[]) => ({
                 vehicle_id: `aircraft-${state[1]?.trim() || state[0]}`,
                 latitude: state[6],
@@ -149,6 +149,55 @@ app.get('/live/aircraft', async (req, res) => {
     } catch (error) {
         console.error('Error fetching aircraft data:', error);
         res.status(500).json({ error: 'Failed to fetch aircraft data' });
+    }
+});
+
+// Simulated Delivery Trucks across major US cities
+app.get('/live/trucks', async (req, res) => {
+    try {
+        // Major distribution hubs across the US
+        const truckHubs = [
+            // West Coast
+            { id: 'truck-la-01', city: 'Los Angeles', lat: 34.0522, lng: -118.2437 },
+            { id: 'truck-la-02', city: 'Los Angeles', lat: 33.9425, lng: -118.4081 },
+            { id: 'truck-sf-01', city: 'San Francisco', lat: 37.7749, lng: -122.4194 },
+            { id: 'truck-sea-01', city: 'Seattle', lat: 47.6062, lng: -122.3321 },
+            { id: 'truck-phx-01', city: 'Phoenix', lat: 33.4484, lng: -112.0740 },
+            // Mountain
+            { id: 'truck-den-01', city: 'Denver', lat: 39.7392, lng: -104.9903 },
+            { id: 'truck-slc-01', city: 'Salt Lake City', lat: 40.7608, lng: -111.8910 },
+            // Central
+            { id: 'truck-dal-01', city: 'Dallas', lat: 32.7767, lng: -96.7970 },
+            { id: 'truck-hou-01', city: 'Houston', lat: 29.7604, lng: -95.3698 },
+            { id: 'truck-chi-01', city: 'Chicago', lat: 41.8781, lng: -87.6298 },
+            { id: 'truck-chi-02', city: 'Chicago', lat: 41.8527, lng: -87.6180 },
+            { id: 'truck-kc-01', city: 'Kansas City', lat: 39.0997, lng: -94.5786 },
+            { id: 'truck-mem-01', city: 'Memphis', lat: 35.1495, lng: -90.0490 },
+            // East Coast
+            { id: 'truck-nyc-01', city: 'New York', lat: 40.7128, lng: -74.0060 },
+            { id: 'truck-nyc-02', city: 'New York', lat: 40.7589, lng: -73.9851 },
+            { id: 'truck-bos-01', city: 'Boston', lat: 42.3601, lng: -71.0589 },
+            { id: 'truck-phi-01', city: 'Philadelphia', lat: 39.9526, lng: -75.1652 },
+            { id: 'truck-atl-01', city: 'Atlanta', lat: 33.7490, lng: -84.3880 },
+            { id: 'truck-atl-02', city: 'Atlanta', lat: 33.6407, lng: -84.4277 },
+            { id: 'truck-mia-01', city: 'Miami', lat: 25.7617, lng: -80.1918 },
+            { id: 'truck-dc-01', city: 'Washington DC', lat: 38.9072, lng: -77.0369 },
+        ];
+
+        // Add slight random movement to simulate real-time updates
+        const trucks = truckHubs.map(hub => ({
+            vehicle_id: hub.id,
+            latitude: hub.lat + (Math.random() - 0.5) * 0.002,
+            longitude: hub.lng + (Math.random() - 0.5) * 0.002,
+            type: 'truck',
+            city: hub.city,
+            timestamp: Date.now() / 1000
+        }));
+
+        res.json(trucks);
+    } catch (error) {
+        console.error('Error generating truck data:', error);
+        res.status(500).json({ error: 'Failed to fetch truck data' });
     }
 });
 
@@ -181,9 +230,14 @@ app.get('/live/buses', async (req, res) => {
 
         res.json(buses);
     } catch (error) {
-        console.error('Error generating bus data:', error);
-        res.status(500).json({ error: 'Failed to fetch bus data' });
+        console.error('Error generating truck data:', error);
+        res.status(500).json({ error: 'Failed to fetch truck data' });
     }
+});
+
+// Keep buses endpoint for backward compatibility
+app.get('/live/buses', async (req, res) => {
+    res.json([]);
 });
 
 // Combined endpoint - All live vehicles (trucks + aircraft + buses)
@@ -202,17 +256,16 @@ app.get('/live/all', async (req, res) => {
             })
         );
 
-        // 2. Fetch real aircraft from OpenSky
         let aircraft: any[] = [];
         try {
-            const bbox = 'lamin=37.3&lomin=-122.6&lamax=37.95&lomax=-121.8';
+            const bbox = 'lamin=24.5&lomin=-125.0&lamax=49.5&lomax=-66.5';
             const response = await fetch(`https://opensky-network.org/api/states/all?${bbox}`);
             if (response.ok) {
                 const data = await response.json() as { time: number; states: any[][] };
                 if (data.states) {
                     aircraft = data.states
-                        .filter((state: any[]) => state[5] && state[6])
-                        .slice(0, 20)
+                        .filter((state: any[]) => state[5] && state[6] && !state[8]) // airborne only
+                        .slice(0, 50) // Limit for performance
                         .map((state: any[]) => ({
                             vehicle_id: `aircraft-${state[1]?.trim() || state[0]}`,
                             latitude: state[6],
@@ -225,8 +278,59 @@ app.get('/live/all', async (req, res) => {
                 }
             }
         } catch (e) {
-            console.warn('Aircraft fetch failed, continuing without:', e);
+            console.warn('Aircraft fetch failed, continuing with simulated:', e);
         }
+
+        // Fallback: If no real aircraft data, use simulated flights across US
+        if (aircraft.length === 0) {
+            const simulatedFlights = [
+                { callsign: 'UAL123', lat: 40.7128, lng: -74.006 },  // NYC
+                { callsign: 'AAL456', lat: 33.9425, lng: -118.408 }, // LAX
+                { callsign: 'DAL789', lat: 41.8781, lng: -87.6298 }, // ORD
+                { callsign: 'SWA101', lat: 32.8998, lng: -97.0403 }, // DFW
+                { callsign: 'JBU202', lat: 42.3656, lng: -71.0096 }, // BOS
+                { callsign: 'FFT303', lat: 33.6407, lng: -84.4277 }, // ATL
+                { callsign: 'UAL404', lat: 37.6213, lng: -122.379 }, // SFO
+                { callsign: 'AAL505', lat: 47.4502, lng: -122.309 }, // SEA
+                { callsign: 'DAL606', lat: 39.8561, lng: -104.674 }, // DEN
+                { callsign: 'SWA707', lat: 25.7959, lng: -80.287 },  // MIA
+                { callsign: 'ASA808', lat: 33.4373, lng: -112.008 }, // PHX
+                { callsign: 'UAL909', lat: 38.8512, lng: -77.0402 }, // DCA
+                { callsign: 'FDX001', lat: 35.0421, lng: -89.9792 }, // MEM (FedEx)
+                { callsign: 'UPS002', lat: 38.1740, lng: -85.7364 }, // SDF (UPS)
+            ];
+            aircraft = simulatedFlights.map((f, i) => ({
+                vehicle_id: `aircraft-${f.callsign}`,
+                latitude: f.lat + (Math.random() - 0.5) * 0.1,
+                longitude: f.lng + (Math.random() - 0.5) * 0.1,
+                type: 'aircraft',
+                callsign: f.callsign,
+                altitude: 30000 + Math.random() * 10000,
+                timestamp: Date.now() / 1000
+            }));
+        }
+
+        // 3. Get simulated trucks from major US cities
+        const truckHubs = [
+            { id: 'truck-la', city: 'Los Angeles', lat: 34.0522, lng: -118.2437 },
+            { id: 'truck-sf', city: 'San Francisco', lat: 37.7749, lng: -122.4194 },
+            { id: 'truck-sea', city: 'Seattle', lat: 47.6062, lng: -122.3321 },
+            { id: 'truck-den', city: 'Denver', lat: 39.7392, lng: -104.9903 },
+            { id: 'truck-dal', city: 'Dallas', lat: 32.7767, lng: -96.7970 },
+            { id: 'truck-chi', city: 'Chicago', lat: 41.8781, lng: -87.6298 },
+            { id: 'truck-nyc', city: 'New York', lat: 40.7128, lng: -74.0060 },
+            { id: 'truck-atl', city: 'Atlanta', lat: 33.7490, lng: -84.3880 },
+            { id: 'truck-mia', city: 'Miami', lat: 25.7617, lng: -80.1918 },
+            { id: 'truck-bos', city: 'Boston', lat: 42.3601, lng: -71.0589 },
+        ];
+        const simulatedTrucks = truckHubs.map(hub => ({
+            vehicle_id: hub.id,
+            latitude: hub.lat + (Math.random() - 0.5) * 0.02,
+            longitude: hub.lng + (Math.random() - 0.5) * 0.02,
+            type: 'truck',
+            city: hub.city,
+            timestamp: Date.now() / 1000
+        }));
 
         // 3. Get simulated buses
         const busRoutes = [
@@ -248,7 +352,7 @@ app.get('/live/all', async (req, res) => {
         const allVehicles = [
             ...trucks.filter(t => t !== null),
             ...aircraft,
-            ...buses
+            ...simulatedTrucks
         ];
 
         res.json(allVehicles);

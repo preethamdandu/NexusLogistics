@@ -40,8 +40,8 @@ interface MapInnerProps {
 }
 
 export default function MapInner({ vehicles }: MapInnerProps) {
-    // Center on SF Bay Area
-    const center: [number, number] = [37.7749, -122.3194];
+    // Center on Continental US
+    const center: [number, number] = [39.8283, -98.5795];
 
     return (
         <div className="h-[600px] w-full rounded-xl overflow-hidden border border-border shadow-sm relative">
@@ -64,7 +64,7 @@ export default function MapInner({ vehicles }: MapInnerProps) {
 
             <MapContainer
                 center={center}
-                zoom={11}
+                zoom={4}
                 style={{ height: '100%', width: '100%' }}
                 className="z-0"
             >
