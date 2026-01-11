@@ -3,9 +3,20 @@ import { startConsumer } from '../consumers/locationConsumer';
 import { redis } from '../config/redis';
 import { pool } from '../config/postgres';
 import client from 'prom-client';
+import {
+    validateParams,
+    VehicleIdParamSchema,
+    sanitizeString
+} from '../middleware/validation';
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// ============================================
+// SECURITY: Request Size Limits
+// ============================================
+app.use(express.json({ limit: '100kb' })); // Limit JSON body size
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // Prometheus Registry
 const register = new client.Registry();
@@ -32,7 +43,6 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json());
 
 // Metrics Endpoint
 app.get('/metrics', async (req, res) => {
