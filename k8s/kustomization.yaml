@@ -18,5 +18,6 @@ resources:
   - hpa/tracking-hpa.yaml
   - gateway/ingress.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: nexus-logistics
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: nexus-logistics

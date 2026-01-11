@@ -98,3 +98,21 @@ jobs:
           context: ./frontend
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/frontend:${{ github.sha }}
+
+  validate-k8s:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Validate Kubernetes manifests
+        run: |
+          kustomize build k8s/
+          echo "✅ Kubernetes manifests are valid"
+
+      - name: Dry-run deployment
+        run: |
+          kustomize build k8s/ | kubectl apply --dry-run=client -f -
+        continue-on-error: true # May fail without cluster connection

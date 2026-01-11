@@ -18,6 +18,20 @@ spec:
                 name: tracking-service
                 port:
                   number: 3000
+          - path: /api/live(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tracking-service
+                port:
+                  number: 3000
+          - path: /api/vehicles(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tracking-service
+                port:
+                  number: 3000
           - path: /api/routes(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
