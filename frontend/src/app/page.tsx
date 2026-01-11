@@ -25,12 +25,9 @@ export default function Dashboard() {
   const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {
-      // Fetch known vehicles. For demo, we might fetch a list.
-      // Since we don't have a "list all" endpoint, we'll fetch our demo vehicle 'vehicle-123'
-      // In a real app we'd have /api/vehicles
       try {
-        const { data } = await api.get<VehicleLocation>('/api/tracking/vehicle-123');
-        return [data];
+        const { data } = await api.get<VehicleLocation[]>('/api/vehicles');
+        return data;
       } catch (e) {
         return [];
       }

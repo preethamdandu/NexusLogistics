@@ -75,6 +75,33 @@ app.get('/tracking/:vehicleId', async (req, res) => {
     }
 });
 
+// API Endpoint: Get All Active Vehicles
+app.get('/vehicles', async (req, res) => {
+    try {
+        // Scan Redis for all vehicle keys
+        const keys = await redis.keys('vehicle:*:latest');
+
+        if (keys.length === 0) {
+            res.json([]);
+            return;
+        }
+
+        // Fetch all vehicle data
+        const vehicles = await Promise.all(
+            keys.map(async (key: string) => {
+                const data = await redis.get(key);
+                return data ? JSON.parse(data) : null;
+            })
+        );
+
+        // Filter out nulls and return
+        res.json(vehicles.filter(v => v !== null));
+    } catch (error) {
+        console.error('Error fetching all vehicles:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // Health Check
 app.get('/health', (req, res) => {
     res.json({ status: 'UP' });
