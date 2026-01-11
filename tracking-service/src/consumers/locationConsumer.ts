@@ -1,6 +1,17 @@
 import { Kafka } from 'kafkajs';
 import { redis } from '../config/redis';
 import { pool } from '../config/postgres';
+import client from 'prom-client';
+
+// Prometheus counter for messages consumed
+const messagesConsumedCounter = new client.Counter({
+    name: 'tracking_messages_consumed_total',
+    help: 'Total number of messages consumed from Kafka',
+});
+
+// Register the counter
+const register = client.register;
+register.registerMetric(messagesConsumedCounter);
 
 const kafka = new Kafka({
     clientId: 'tracking-service',
@@ -27,6 +38,9 @@ export const startConsumer = async () => {
             try {
                 const ping: LocationPing = JSON.parse(message.value.toString());
                 const { vehicle_id, latitude, longitude, timestamp } = ping;
+
+                // Increment consumed counter
+                messagesConsumedCounter.inc();
 
                 // 1. Write-Through Cache (Redis) - O(1) Speed
                 // Store the latest state as a JSON string
