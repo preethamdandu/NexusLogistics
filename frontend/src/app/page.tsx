@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, VehicleLocation } from '@/lib/api';
 import MapComponent from '@/components/Map';
-import { Activity, Radio, Truck } from 'lucide-react';
+import { Activity, Radio, Truck, Plane, Bus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Helper component for Stat Cards (since we didn't init full shadcn components)
@@ -23,16 +23,23 @@ function StatCard({ title, value, icon: Icon, className }: any) {
 
 export default function Dashboard() {
   const { data: vehicles = [], isLoading } = useQuery({
-    queryKey: ['vehicles'],
+    queryKey: ['liveVehicles'],
     queryFn: async () => {
       try {
-        const { data } = await api.get<VehicleLocation[]>('/api/vehicles');
+        // Use the live endpoint that includes real aircraft, buses, and trucks
+        const { data } = await api.get<VehicleLocation[]>('/api/live/all');
         return data;
       } catch (e) {
-        return [];
+        // Fallback to basic vehicles endpoint if live fails
+        try {
+          const { data } = await api.get<VehicleLocation[]>('/api/vehicles');
+          return data;
+        } catch {
+          return [];
+        }
       }
     },
-    refetchInterval: 2000,
+    refetchInterval: 5000, // Refresh every 5 seconds for live data
   });
 
   return (
