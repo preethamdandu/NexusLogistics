@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:80';
+/** Browser + server: gateway root (Compose default `NEXT_PUBLIC_API_URL=http://localhost:80`). */
+export const GATEWAY_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:80';
 
 export const api = axios.create({
-    baseURL: API_URL,
+    baseURL: GATEWAY_BASE_URL,
 });
 
 export interface VehicleLocation {
@@ -17,12 +18,34 @@ export interface VehicleLocation {
     route?: string;
 }
 
+/** Accept any HTTP status so we can branch on status without axios throwing. */
+const alwaysResolveStatus = () => true;
+
+/**
+ * Loads combined live vehicles from the gateway. If GET /api/live/aircraft is not 200,
+ * aircraft entries are stripped from the /live/all payload so the map stays honest
+ * (trucks, buses, Redis-backed vehicles remain).
+ */
+export async function fetchDashboardLiveVehicles(): Promise<{
+    vehicles: VehicleLocation[];
+    aircraftFeedUnavailable: boolean;
+}> {
+    const [aircraftProbe, allResponse] = await Promise.all([
+        api.get<unknown>('/api/live/aircraft', { validateStatus: alwaysResolveStatus }),
+        api.get<VehicleLocation[]>('/api/live/all'),
+    ]);
+
+    const aircraftFeedUnavailable = aircraftProbe.status !== 200;
+    let vehicles = allResponse.data;
+
+    if (aircraftFeedUnavailable) {
+        vehicles = vehicles.filter((v) => v.type !== 'aircraft');
+    }
+
+    return { vehicles, aircraftFeedUnavailable };
+}
+
 export const fetchVehicleLocation = async (vehicleId: string): Promise<VehicleLocation> => {
     const { data } = await api.get<VehicleLocation>(`/api/tracking/${vehicleId}`);
-    return data;
-};
-
-export const fetchAllLiveVehicles = async (): Promise<VehicleLocation[]> => {
-    const { data } = await api.get<VehicleLocation[]>('/api/live/all');
     return data;
 };

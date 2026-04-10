@@ -21,7 +21,7 @@ const createVehicleIcon = (type: string) => {
     }
 
     const iconMarkup = renderToStaticMarkup(
-        <div className={`${bgColor} text-white p-1.5 rounded-full shadow-lg border-2 border-white`}>
+        <div className={`${bgColor} text-white p-1.5 rounded-full border-2 border-white`}>
             <IconComponent size={18} />
         </div>
     );
@@ -44,21 +44,27 @@ export default function MapInner({ vehicles }: MapInnerProps) {
     const center: [number, number] = [39.8283, -98.5795];
 
     return (
-        <div className="h-[600px] w-full rounded-xl overflow-hidden border border-border shadow-sm relative">
+        <div className="relative h-[600px] w-full overflow-hidden rounded-xl border border-border">
             {/* Legend */}
-            <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 text-xs">
-                <div className="font-bold mb-2 text-gray-900">Vehicle Types</div>
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-4 h-4 rounded-full bg-blue-600"></div>
-                    <span className="text-gray-700">Trucks ({vehicles.filter(v => v.type === 'truck' || !v.type).length})</span>
+            <div className="absolute right-4 top-4 z-[1000] rounded-lg border border-border bg-background/95 p-3 text-xs backdrop-blur-sm dark:bg-card/95">
+                <div className="mb-2 font-bold text-foreground">Vehicle types</div>
+                <div className="mb-1 flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full bg-blue-600" />
+                    <span className="text-muted-foreground">
+                        Trucks ({vehicles.filter((v) => v.type === 'truck' || !v.type).length})
+                    </span>
                 </div>
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-4 h-4 rounded-full bg-green-600"></div>
-                    <span className="text-gray-700">Buses ({vehicles.filter(v => v.type === 'bus').length})</span>
+                <div className="mb-1 flex items-center gap-2">
+                    <div className="h-4 w-4 rounded-full bg-green-600" />
+                    <span className="text-muted-foreground">
+                        Buses ({vehicles.filter((v) => v.type === 'bus').length})
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-purple-600"></div>
-                    <span className="text-gray-700">Aircraft ({vehicles.filter(v => v.type === 'aircraft').length})</span>
+                    <div className="h-4 w-4 rounded-full bg-purple-600" />
+                    <span className="text-muted-foreground">
+                        Aircraft ({vehicles.filter((v) => v.type === 'aircraft').length})
+                    </span>
                 </div>
             </div>
 
@@ -83,7 +89,7 @@ export default function MapInner({ vehicles }: MapInnerProps) {
                                 <h3 className="font-bold text-sm capitalize">
                                     {v.type || 'Truck'}: {v.vehicle_id}
                                 </h3>
-                                <p className="text-xs text-gray-600">
+                                <p className="text-xs text-muted-foreground">
                                     Lat: {v.latitude.toFixed(4)}<br />
                                     Lng: {v.longitude.toFixed(4)}
                                     {v.callsign && <><br />Callsign: {v.callsign}</>}

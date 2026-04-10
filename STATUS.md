@@ -65,6 +65,28 @@ Recorded so CI “green” is comparable and `npm test` can’t silently no-op.
 | Change | `@CrossOrigin(origins = "*", maxAge = 3600)` on `ApiRoutesController` so Spring handles **OPTIONS** and CORS headers for `/calculate` and `/status/{id}` |
 | Check | `curl -i -X OPTIONS http://127.0.0.1/api/routes/calculate` with `Origin` + `Access-Control-Request-Method: POST` → **200** with `Access-Control-Allow-Origin: *` and allowed methods/headers (Nginx still adds its own `add_header` CORS lines on top) |
 
+### Frontend — Phase 1 (2026-04-10)
+
+| Item | Change |
+|------|--------|
+| Lint / types | `page.tsx`: `StatCard` uses `LucideIcon` + `ReactNode` (no `any`); `tailwind.config.ts`: ESM `import tailwindcssAnimate` (no `require`) |
+| Live data | `fetchDashboardLiveVehicles()` in `src/lib/api.ts`: parallel probe `GET /api/live/aircraft` with `validateStatus`; if status ≠ **200**, strip `type === 'aircraft'` from `GET /api/live/all` and dashboard shows amber banner: *Live aircraft feed temporarily unavailable* |
+| Honest errors | Removed silent fallback to `/api/vehicles` on `/live/all` failure; React Query **error** state + **Retry**; **loading** skeleton; **empty** map copy when count is 0 |
+| Fake KPIs | Removed hardcoded “Healthy” / “~1”; **System status** and **Updates / sec** show **—** with native tooltip *Requires a metrics-backed endpoint…* until Phase 2 health panel |
+| Verify | `npm run lint` → **0**; `npm run build` → **0** (Next **16.1.1**) |
+
+### Frontend — Phase 2 (2026-04-10)
+
+| Item | Detail |
+|------|--------|
+| **Gateway** | `upstream ingestion_metrics` → `ingestion-service:9090`; `location ^~ /api/health/route` → `route_service/actuator/health`; `location ^~ /api/health/ingestion` → `ingestion_metrics/metrics`; CORS `*` on `/health` and both probe paths (**after editing `nginx.conf`, run `docker exec gateway nginx -s reload` or recreate the container**) |
+| **Health panel** | Collapsible `<details>`; probes every **15s**: `/health`, `/api/live/trucks`, `/api/health/route`, `/api/health/ingestion`; red/green per probe; `docker logs …` hints on failure; links to Prometheus **:9090**, Grafana **:3001**, Kafka UI **:8080** (host tabs only, not fetched) |
+| **KPI strip** | **System status** = Operational / Degraded / Checking… / Unknown from live probes; **Updates / sec** still **—** (needs Prom rate math) |
+| **Polish** | `ThemeToggle` (`html.dark` + `useSyncExternalStore`); map legend uses `border` / `bg-background` (no heavy shadows); Inter unchanged |
+| **Verify** | `npm run lint` → **0**; `npm run build` → **0** |
+
+**Compose:** restart **gateway** after editing `nginx.conf` (`docker compose up -d gateway`).
+
 ---
 
 ## How to bring the system up
@@ -110,7 +132,9 @@ Latencies are single `curl` samples (`time_total`); not a load test unless noted
 
 | Endpoint | Method | Result | Latency (sample) | Notes |
 |----------|--------|--------|------------------|-------|
-| `http://127.0.0.1/health` | GET | 200 | ~0.002s | Nginx static body |
+| `http://127.0.0.1/health` | GET | 200 | ~0.002s | Nginx static JSON; CORS `*` for dashboard |
+| `http://127.0.0.1/api/health/route` | GET | 200 | — | Proxies **route-service** `GET /actuator/health` |
+| `http://127.0.0.1/api/health/ingestion` | GET | 200 | — | Proxies **ingestion** Prometheus `:9090/metrics` text |
 | `http://127.0.0.1/api/tracking/vehicle-123` | GET | 200 | ~0.004s | JSON from cache/DB |
 | `http://127.0.0.1/api/tracking/nonexistent-vehicle-xyz-999` | GET | 404 | — | Confirms miss path |
 | `http://127.0.0.1/api/vehicles` | GET | 200 | ~0.024s | Large JSON — Redis **`SCAN`** for `vehicle:*:latest` |
@@ -181,7 +205,7 @@ npm run build  → tsc OK
 
 ```text
 npm run build  → Next.js 16.1.1 build OK
-npm run lint   → exit 1 (errors in src/app/page.tsx, tailwind.config.ts)
+npm run lint   → exit 0 (Phase 1: page.tsx + tailwind.config.ts clean)
 ```
 
 ---
@@ -264,7 +288,7 @@ npm run lint   → exit 1 (errors in src/app/page.tsx, tailwind.config.ts)
 - **OpenSky-dependent** live endpoints (e.g. `GET /api/live/aircraft`) can return **500** when OpenSky fails.
 - **`gateway-bench/`, `frontend-bench/`, `tracking-service/cmd/bench/`:** each has `go.mod` — `PATH` must include Go.
 - **Automated tests:** Slice C adds minimal Go / Node / Java tests (see Slice C verification); not full coverage.
-- **Frontend ESLint:** fails on current sources.
+- **Frontend ESLint:** **Phase 1** — `npm run lint` passes; see **Frontend — Phase 1** above.
 
 ---
 

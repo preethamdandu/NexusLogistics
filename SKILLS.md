@@ -11,7 +11,7 @@ Depth: **touched** = wired but shallow or not E2E; **working** = happy-path E2E 
 | Go (services, gRPC) | `ingestion-service/main.go`, `proto/tracker.proto`, `pb/*`, `internal/*` | gRPC server, Kafka produce, Prometheus HTTP on `:9090` | **working** |
 | TypeScript / Node (Express) | `tracking-service/src/api/server.ts`, `src/consumers/locationConsumer.ts` | REST API, Kafka consumer, Redis + Postgres I/O | **working** |
 | Java / Spring Boot | `route-service/src/main/java/...` | Kafka listener, Redis template, KafkaTemplate send, Actuator | **working** (consumer path; optimization is stub) |
-| TypeScript / React (Next.js) | `frontend/src/**` | Dashboard, map, axios client to gateway | **working** (build); lint **not** clean |
+| TypeScript / React (Next.js) | `frontend/src/**` | Dashboard, map, axios client to gateway | **working** (build + ESLint clean, 2026-04-10 Phase 1) |
 
 ---
 
