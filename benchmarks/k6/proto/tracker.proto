@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package tracker;
+
+option go_package = "github.com/nexus-logistics/ingestion-service/pb";
+
+service TrackerService {
+  rpc SendPing (LocationPing) returns (PingResponse) {}
+}
+
+message LocationPing {
+  string vehicle_id = 1;
+  double latitude = 2;
+  double longitude = 3;
+  int64 timestamp = 4;
+}
+
+message PingResponse {
+  bool success = 1;
+  string message = 2;
+}
