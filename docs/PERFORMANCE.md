@@ -21,8 +21,8 @@
 |--------|-------|
 | **Endpoint** | `GET /api/live/all` |
 | **Requests** | 50 |
-| **Avg Latency** | 180.000ms |
-| **RPS** | 5.21 |
+| **Avg Latency** | 167.000ms |
+| **RPS** | 5.57 |
 | **Success Rate** | 100% |
 
 
@@ -32,8 +32,8 @@
 |--------|-------|
 | **Endpoint** | `GET /api/tracking/:id` |
 | **Requests** | 50 |
-| **Avg Latency** | 13.000ms |
-| **RPS** | 45.98 |
+| **Avg Latency** | 12.000ms |
+| **RPS** | 53.76 |
 | **Cache Hit** | Yes (Redis) |
 
 

@@ -9,8 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/actions/workflow/status/preethamdandu/NexusLogistics/ci.yaml?branch=main&style=flat-square&label=CI" alt="CI Status" />
-  <img src="https://img.shields.io/badge/coverage-87%25-brightgreen?style=flat-square" alt="Coverage" />
+  <a href="https://github.com/preethamdandu/NexusLogistics/actions/workflows/ci.yaml"><img src="https://img.shields.io/github/actions/workflow/status/preethamdandu/NexusLogistics/ci.yaml?branch=main&style=flat-square&label=CI" alt="CI Status" /></a>
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome" />
 </p>
@@ -19,7 +18,7 @@
   <img src="https://img.shields.io/badge/Go-1.21-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go" />
   <img src="https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java" />
-  <img src="https://img.shields.io/badge/Next.js-15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/Next.js-16.1-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/Kubernetes-Ready-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white" alt="Kubernetes" />
 </p>
 
@@ -38,26 +37,16 @@
 
 ## 🤔 Why NexusLogistics?
 
-**The Problem**: Modern logistics companies need to track thousands of vehicles in real-time, optimize routes dynamically, and handle massive data throughput—all while maintaining sub-second latency. Traditional monolithic solutions can't scale.
+A learning project exploring polyglot microservices for real-time vehicle tracking. Three services in three languages communicate via gRPC and Kafka, with Redis caching, Postgres persistence, and Prometheus/Grafana observability. The goal was to build something end-to-end — ingest → queue → consume → cache → serve — rather than any single layer in isolation.
 
-**Our Solution**: A polyglot microservices architecture that leverages the **right language for each job**:
+**Stack choices:**
 
-| Challenge | Solution | Why It Works |
-|-----------|----------|--------------|
-| **High-volume ingestion** | Go + gRPC | 5,500 RPS with 2ms latency |
-| **Real-time queries** | Node.js + Redis | <5ms cache hits |
-| **Complex algorithms** | Java + Spring Boot | Battle-tested A* with distributed locks |
-| **Beautiful dashboards** | Next.js + Leaflet | SSR + real-time maps |
-
-### vs. Traditional Solutions
-
-| Feature | NexusLogistics | Monolith Alternative |
-|---------|----------------|---------------------|
-| **Throughput** | 19,200 RPS | ~500 RPS |
-| **Latency (P99)** | 13ms | 200ms+ |
-| **Auto-scaling** | ✅ Per-service HPA | ❌ All-or-nothing |
-| **Failure isolation** | ✅ Service-level | ❌ Full outage |
-| **Tech flexibility** | ✅ Best tool for job | ❌ Locked in |
+| Service | Language | Role |
+|---------|----------|------|
+| ingestion-service | Go | gRPC server that validates vehicle pings and produces to Kafka |
+| tracking-service | Node.js / TypeScript | Kafka consumer + REST read API with Redis cache-aside |
+| route-service | Java / Spring Boot | Kafka consumer for route requests, Redis distributed lock, publishes updates |
+| frontend | Next.js 16 | Live map dashboard |
 
 ---
 
@@ -95,17 +84,15 @@
 <tr>
 <td width="50%">
 
-**⚡ High Performance**
-- 19,200 requests/second
-- 13ms P99 latency
-- Zero-downtime deployments
+**⚡ Performance**
+- See [**Performance**](#-performance) below for measured throughput and latency (k6, 60s on Docker Compose).
 
 </td>
 <td width="50%">
 
-**🔒 Enterprise Security**
-- Rate limiting (10 req/s/IP)
-- API Gateway protection
+**🛡️ Operational hardening**
+- Nginx `limit_req`: **~100 req/s per IP** on most `/api/*` paths; **10 req/s** on `/api/metrics`
+- Gateway in front of the API (no end-user auth in this demo stack)
 - Prometheus + Grafana observability
 
 </td>
@@ -120,8 +107,11 @@
 
 ```bash
 # Required
-docker --version    # v20.10+
-docker-compose --version  # v2.0+
+docker --version          # v20.10+
+docker compose version      # Compose v2 plugin (v2.0+)
+
+# Optional: legacy standalone binary, if installed
+# docker-compose --version
 
 # Recommended
 8GB RAM minimum
@@ -132,8 +122,8 @@ docker-compose --version  # v2.0+
 ```bash
 # Clone and start everything
 git clone https://github.com/preethamdandu/NexusLogistics.git
-cd nexus-logistics
-docker-compose up -d
+cd NexusLogistics
+docker compose up -d
 
 # ✅ That's it! Open http://localhost:3002
 ```
@@ -144,16 +134,20 @@ docker-compose up -d
 # Check all services are healthy
 docker ps --format "table {{.Names}}\t{{.Status}}"
 
-# Expected output:
+# Example (your uptime strings will differ):
 # NAMES               STATUS
 # frontend            Up 2 minutes
+# gateway             Up 2 minutes
 # tracking-service    Up 2 minutes
 # ingestion-service   Up 2 minutes
 # route-service       Up 2 minutes
-# gateway             Up 2 minutes
+# kafka               Up 2 minutes
+# redis               Up 2 minutes
+# nexus_postgres      Up 2 minutes
 # grafana             Up 2 minutes
 # prometheus          Up 2 minutes
-# ...
+# kafka-ui            Up 2 minutes
+# zookeeper           Up 2 minutes
 ```
 
 ### Access Points
@@ -431,72 +425,25 @@ GET /api/live/all
 
 ## ⚡ Performance
 
-### Benchmark Results
+All numbers below are measured on this repo with k6 against a local Docker Compose stack. Reproduce them with `benchmarks/k6/run-all.sh`. Methodology and raw output live in `benchmarks/k6/README.md`.
 
-<table>
-<tr>
-<th>Metric</th>
-<th>Ingestion Service</th>
-<th>Tracking Service</th>
-<th>Frontend</th>
-</tr>
-<tr>
-<td><strong>Throughput</strong></td>
-<td>
+**Environment:** Docker Desktop on macOS, single host, services reached via published ports. HTTP scenarios target `tracking-service:3000` directly to measure service throughput without the gateway rate limiter in the path. The gateway's `limit_req` behavior is tested separately in `gateway-bench/`.
 
-```
-5,500 RPS
-```
+### Sustained load (60s, k6)
 
-</td>
-<td>
+| Scenario | Tool | VUs | Throughput | P50 | P95 | P99 |
+|----------|------|-----|--------------|-----|-----|-----|
+| gRPC `SendPing` → ingestion | k6 grpc | 25 | 3,402 RPS | 7.12ms | 8.62ms | 10.37ms |
+| HTTP `GET /tracking/:id` (cache hit) | k6 http | 40 | 12,471 RPS | 2.63ms | 5.57ms | 7.66ms |
+| HTTP `GET /tracking/:id` (404 lookup path) | k6 http | 40 | 7,850 RPS | 4.63ms | 7.34ms | 9.42ms |
 
-```
-19,200 RPS
-```
+All scripted checks passed 100%. The 404 lookup path scenario's `http_req_failed` metric is elevated by design because unique IDs return HTTP 404; this is documented in `benchmarks/k6/http_tracking_miss.js` and `benchmarks/k6/README.md`.
 
-</td>
-<td>
+### Notes
 
-```
-3,000 RPS
-```
-
-</td>
-</tr>
-<tr>
-<td><strong>P50 Latency</strong></td>
-<td>2ms</td>
-<td>1ms</td>
-<td>5ms</td>
-</tr>
-<tr>
-<td><strong>P99 Latency</strong></td>
-<td>12ms</td>
-<td>13ms</td>
-<td>25ms</td>
-</tr>
-<tr>
-<td><strong>Error Rate</strong></td>
-<td>0.00%</td>
-<td>0.00%</td>
-<td>0.00%</td>
-</tr>
-</table>
-
-### Run Your Own Benchmark
-
-```bash
-# Ingestion benchmark (Go)
-cd ingestion-service/cmd/bench
-go run main.go -c 100 -d 30s -addr localhost:50051
-
-# Output:
-# Total Requests: 165,000
-# RPS: 5,500
-# P99: 12ms
-# Errors: 0
-```
+- The gRPC client keeps one connection per VU (established on `__ITER === 0`). An earlier version opened and closed a connection per iteration and saturated ephemeral ports under load — if you see `connection refused`, check that you're on the current script.
+- HTTP scenarios bypass the Nginx gateway intentionally. Nginx enforces a 100 r/s `limit_req` per IP on `/api/*` paths, which would dominate the measurements. To observe the rate limiter in action, use `gateway-bench/`.
+- These numbers reflect a single laptop running every service, Kafka, Redis, and Postgres simultaneously in Docker. Dedicated infrastructure would produce higher numbers; they are not published here because they have not been measured.
 
 ---
 
