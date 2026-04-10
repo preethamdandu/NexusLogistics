@@ -27,8 +27,13 @@ func NewProducer(brokers string, topic string) (*Producer, error) {
 	}, nil
 }
 
+// MarshalProducePayload JSON-encodes a value for Kafka. Used by Produce and unit-tested without a broker.
+func MarshalProducePayload(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
+
 func (p *Producer) Produce(key string, value interface{}) error {
-	bytes, err := json.Marshal(value)
+	bytes, err := MarshalProducePayload(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal value: %w", err)
 	}
