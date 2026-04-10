@@ -1,8 +1,14 @@
 name: Test Suite
 
 on:
+  push:
+    branches: ['**']
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # Go tests for Ingestion Service
