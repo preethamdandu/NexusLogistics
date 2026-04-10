@@ -47,6 +47,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./tracking-service/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./tracking-service/migrations/post-init-002-vehicle-locations-unique.sql:/docker-entrypoint-initdb.d/post-init-002-vehicle-locations-unique.sql
 
   redis:
     image: redis:7-alpine
@@ -113,6 +114,7 @@ services:
     depends_on:
       - ingestion-service
       - tracking-service
+      - route-service
 
   prometheus:
     image: prom/prometheus:latest
