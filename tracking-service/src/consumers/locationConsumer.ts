@@ -3,16 +3,6 @@ import { redis } from '../config/redis';
 import { pool } from '../config/postgres';
 import client from 'prom-client';
 
-// Prometheus counter for messages consumed
-const messagesConsumedCounter = new client.Counter({
-    name: 'tracking_messages_consumed_total',
-    help: 'Total number of messages consumed from Kafka',
-});
-
-// Register the counter
-const register = client.register;
-register.registerMetric(messagesConsumedCounter);
-
 const kafka = new Kafka({
     clientId: 'tracking-service',
     brokers: (process.env.KAFKA_BROKERS || 'localhost:9092').split(','),
@@ -27,7 +17,13 @@ interface LocationPing {
     timestamp: number;
 }
 
-export const startConsumer = async () => {
+export const startConsumer = async (metricsRegister: client.Registry) => {
+    const messagesConsumedCounter = new client.Counter({
+        name: 'tracking_messages_consumed_total',
+        help: 'Total number of messages consumed from Kafka',
+        registers: [metricsRegister],
+    });
+
     await consumer.connect();
     await consumer.subscribe({ topic: 'vehicle-locations', fromBeginning: true });
 
@@ -39,7 +35,6 @@ export const startConsumer = async () => {
                 const ping: LocationPing = JSON.parse(message.value.toString());
                 const { vehicle_id, latitude, longitude, timestamp } = ping;
 
-                // Increment consumed counter
                 messagesConsumedCounter.inc();
 
                 // 1. Write-Through Cache (Redis) - O(1) Speed
@@ -51,9 +46,10 @@ export const startConsumer = async () => {
                     86400
                 );
 
-                // 2. Persist History (PostgreSQL) - Durability
                 await pool.query(
-                    'INSERT INTO vehicle_locations (vehicle_id, latitude, longitude, timestamp) VALUES ($1, $2, $3, $4)',
+                    `INSERT INTO vehicle_locations (vehicle_id, latitude, longitude, timestamp)
+                     VALUES ($1, $2, $3, $4)
+                     ON CONFLICT (vehicle_id, timestamp) DO NOTHING`,
                     [vehicle_id, latitude, longitude, timestamp]
                 );
 
