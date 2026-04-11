@@ -67,3 +67,9 @@ postgres_data/
 
 # Benchmark tools
 *-bench/main
+
+# Internal development docs
+CLAUDE.md
+STATUS.md
+SKILLS.md
+PHASE1_INVESTIGATION.md
