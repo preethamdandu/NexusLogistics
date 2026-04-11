@@ -13,9 +13,12 @@ export interface VehicleLocation {
     longitude: number;
     timestamp: number;
     type?: 'truck' | 'bus' | 'aircraft';
+    /** Present on Kafka / SSE payloads; normalized to `type` in the live map hook. */
+    vehicle_type?: string;
     callsign?: string;
     altitude?: number;
     route?: string;
+    city?: string;
 }
 
 /** Accept any HTTP status so we can branch on status without axios throwing. */

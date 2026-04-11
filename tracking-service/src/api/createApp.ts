@@ -2,6 +2,7 @@ import express, { Express } from 'express';
 import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
 import client from 'prom-client';
+import { registerLiveSseRoute } from '../realtime/sseHub';
 
 export type TrackingRedis = Pick<Redis, 'get' | 'set' | 'scan'>;
 export type TrackingPool = Pick<Pool, 'query'>;
@@ -117,6 +118,9 @@ app.get('/health', (req, res) => {
 });
 
 // ============ LIVE DATA APIS ============
+
+// Server-Sent Events: live vehicle location updates (broadcast from Kafka consumer)
+registerLiveSseRoute(app);
 
 // OpenSky Network API - Real Aircraft Data
 app.get('/live/aircraft', async (req, res) => {

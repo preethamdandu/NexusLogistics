@@ -30,7 +30,7 @@ Recorded so CI “green” is comparable and `npm test` can’t silently no-op.
 |---------|-------------|------|--------|
 | `go test ./...` | `ingestion-service` | **0** | All packages `[no test files]` |
 | `mvn test -B` | `route-service` | **0** | No `src/test` sources (Surefire vacuous) |
-| `npm test --if-present` | `tracking-service` | **0** | **No `test` script** — npm exits 0 without running tests |
+| `npm test --if-present` | `tracking-service` | **0** | **Has `test` script** (Jest); `--if-present` still exits 0 if script absent on older clones |
 
 ### Slice C verification (after tests, 2026-04-10)
 
@@ -75,6 +75,18 @@ Recorded so CI “green” is comparable and `npm test` can’t silently no-op.
 | Fake KPIs | Removed hardcoded “Healthy” / “~1”; **System status** and **Updates / sec** show **—** with native tooltip *Requires a metrics-backed endpoint…* until Phase 2 health panel |
 | Verify | `npm run lint` → **0**; `npm run build` → **0** (Next **16.1.1**) |
 
+### Real-time vehicle stream — simulator + SSE (2026-04-10)
+
+| Item | Detail |
+|------|--------|
+| **Simulator** | `ingestion-service/cmd/simulator`: host-only `go run ./cmd/simulator` → gRPC **`SendPing`** to **`localhost:50051`**; **6** looped routes; `-tick` (default **1.5s**), `-speed` km/h (default **60**); metadata **`x-vehicle-type`**; stdout log per ping; **SIGINT/SIGTERM** |
+| **Ingestion** | `PingPayload` includes **`vehicle_type`** when metadata `x-vehicle-type` is `truck` or `bus` |
+| **SSE** | **`tracking-service`**: `GET /live/stream` — `event: connected`, **`event: location-update`** (full ping JSON), **`:ping`** every **15s**; in-memory `Set<Response>`; **`locationConsumer`** calls **`broadcastLocationUpdate`** after Redis + Postgres |
+| **Gateway** | **`GET /api/live/stream`** → `tracking_service/live/stream`; **no** `limit_req`; `proxy_buffering off`, `proxy_cache off`, `chunked_transfer_encoding off`, `proxy_http_version 1.1`, `Connection ''` |
+| **Manual check** | Terminal A: `curl -N http://localhost/api/live/stream`; Terminal B: `go run ./cmd/simulator` ~10s → **`location-update`** events with moving coordinates within ~1s of ticks |
+| **Compose images** | After changing **tracking** or **ingestion** Go code, run **`docker compose build <service> && docker compose up -d <service>`** so containers match the host simulator; otherwise SSE or **`vehicle_type`** in Redis can lag (e.g. transient **502** to `/api/live/stream` while tracking restarts) |
+| **Verified (2026-04-11)** | `go build ./...` (ingestion + simulator); `npm run build` + `npm test` (tracking); `docker compose build tracking-service ingestion-service && docker compose up -d …`; `nginx -s reload`; Redis **`vehicle:sim-bus-01:latest`** includes **`vehicle_type`**; gateway SSE shows **`event: location-update`** |
+
 ### Frontend — Phase 2 (2026-04-10)
 
 | Item | Detail |
@@ -86,6 +98,73 @@ Recorded so CI “green” is comparable and `npm test` can’t silently no-op.
 | **Verify** | `npm run lint` → **0**; `npm run build` → **0** |
 
 **Compose:** restart **gateway** after editing `nginx.conf` (`docker compose up -d gateway`).
+
+### Frontend — Real-time animation (2026-04-11)
+
+| Item | Detail |
+|------|--------|
+| **Prereq** | Stack on **`docker compose up -d`**; **`curl -N http://localhost/api/live/stream`** shows **`event: connected`** then **`event: location-update`** when the simulator (or other producers) is active |
+| **Simulator** | Host: `cd ingestion-service && go run ./cmd/simulator` (keep running while demoing) |
+| **Dashboard** | **`http://localhost:3002/`** (Compose) — uses gateway **`NEXT_PUBLIC_API_URL=http://localhost:80`** |
+| **Data flow** | `useLiveVehicleStream()` (`frontend/src/lib/useLiveVehicleStream.ts`): one-time seed **`GET /api/live/all`** + aircraft probe (same rules as Phase 1); **`EventSource`** on **`/api/live/stream`** merges **`location-update`** JSON into state; **`vehicle_type`** normalized to **`type`** via `normalizeVehicleKind` (`frontend/src/lib/vehicleTypes.ts`) |
+| **UI** | Header **8px** SSE status dot (green / red + `title` tooltips); map subtitle documents SSE; after **10s** connected with **zero** vehicles, dashed overlay + **`Terminal`** icon + monospace simulator command |
+| **Map** | `VehicleLayer` (`frontend/src/components/Map/VehicleLayer.tsx`): truck / bus / aircraft colors via **inline hex** + globals (`.vehicle-marker-*`, **`@keyframes vehicle-marker-pulse`** in `globals.css`) so Leaflet `divIcon` HTML is not Tailwind-purged; **1500ms** `requestAnimationFrame` move when previous position exists; bearing **rotate** on wrapper; **Haversine** speed ring (green / amber / red / gray); per-vehicle **trail** polylines after **≥2** SSE updates (segment opacity ramp); marker **click** → **`flyTo`** zoom **12** or **`fitBounds`** when already close zoomed; **`Maximize2`** fit-all control (bottom-left); legend counts follow live **`vehicles`** |
+| **Deps** | No **`leaflet-drift-marker`** — animation is manual per project rules |
+| **Verify** | `cd frontend && npm run lint` → **0**; `npm run build` → **0** |
+
+### Command center UI (2026-04-11)
+
+| Item | Detail |
+|------|--------|
+| **Theme** | Default **`html.dark`** tactical look; **`--cc-*`** tokens in `frontend/src/app/globals.css` (JetBrains Mono `@import`, scanline `::after` on **`.cc-app-shell`**, shadcn HSL tokens aligned to dark navy). **`StandardUiToggle`** (`Std` / `CC`) removes **`dark`** for a light “standard” escape hatch |
+| **Map** | **CARTO** `dark_all` tiles; attribution **OpenStreetMap + CARTO**; faint cyan grid overlay; **LIVE** / reconnecting HUD on map; legend **TRK / BUS / AIR** with glow; center readout (monospace); markers = **CSS-variable** dot + infinite ring pulse + SSE hit pulse; trails use **`--cc-*-trail`**; **`VehicleLayer`** / **`vehicleTypes`** use **`var(--cc-*)`** only (no scattered hex in TS) |
+| **Layout** | **`md:grid-cols-[1fr_260px]`**: map + stat row main column; right stack **`ServicesPanel`** (health probes, same **15s** `useQuery`), **`LiveFeedPanel`** (last **10** SSE rows from **`useLiveVehicleStream.liveFeed`** — single EventSource), **`LinksPanel`** |
+| **Header** | Pulsing cyan dot + **NEXUS LOGISTICS** tracking; **`HeaderClock`** **UTC** `HH:MM:SS` every **1s**; **LIVE / RECONNECTING** badge |
+| **Polish** | Dark skeleton; **`CountUpNumber`** intro count-up; live-feed row **`live-feed-row`** transition; **`public/favicon.svg`** + `metadata.icons` |
+| **Verify** | `cd frontend && npm run lint` → **0**; `npm run build` → **0**; dashboard **`http://localhost:3002`** with simulator for motion + feed |
+
+### AI fleet command bar (2026-04-11)
+
+| Item | Detail |
+|------|--------|
+| **Flow** | `CommandBar` → native `fetch` → gateway **`/api/ai/tags`** (availability) and **`/api/ai/chat`** (15s `AbortSignal.timeout`) → Ollama **`gemma4:e2b`** with **`format: "json"`** → `message.content` stripped of markdown fences → `JSON.parse` → `FleetAiAction` → `MapInner` / `VehicleLayer` (no second `EventSource`; fleet context from **`useLiveVehicleStream`** only, max **30** vehicles in the system prompt) |
+| **Code** | `frontend/src/components/CommandBar.tsx`, `frontend/src/lib/useFleetAi.ts`, `frontend/src/lib/fleetAi*.ts`, `frontend/src/lib/mapFleetVisual.ts`; map wiring in `MapInner.tsx` + `VehicleLayer.tsx` |
+| **Reset phrases** | `reset` / `clear` / `show all` / `show everything` → **`clear_filters`** handled **client-side** (no Ollama call) |
+| **Shortcuts** | **`/`** focuses the bar (when not typing in another input); **`Escape`** clears fleet AI state (document + bar); **ArrowUp** cycles query history |
+| **Verify** | `cd frontend && npm run lint` → **0**; `npm run build` → **0** |
+
+#### Ollama setup (host)
+
+```bash
+brew install ollama   # or install from ollama.com
+ollama pull gemma4:e2b
+ollama serve          # default http://127.0.0.1:11434
+```
+
+The gateway container reaches the host via **`host.docker.internal:11434`** (see `upstream ollama` in `gateway/nginx.conf`). On Linux Docker, add **`extra_hosts: ["host.docker.internal:host-gateway"]`** to the **gateway** service if needed, or point `upstream ollama` at your Ollama host.
+
+#### Nginx proxy (gateway only)
+
+`location ^~ /api/ai/` → `proxy_pass http://ollama/api/;` so **`GET /api/ai/tags`** → Ollama **`/api/tags`**, **`POST /api/ai/chat`** → **`/api/chat`**. CORS + OPTIONS mirror other dashboard API blocks; **`proxy_read_timeout` / `proxy_send_timeout` 120s** for slow first loads.
+
+Reload after edits: `docker exec gateway nginx -s reload` (or recreate the gateway container).
+
+#### Example queries — observed `assistant` JSON (`gemma4:e2b`, 2026-04-11)
+
+Same system prompt shape as production (sample fleet of **4** vehicles: two trucks, one bus, one aircraft). Times are single-run wall seconds to first response on a warm model.
+
+| # | User query | `message.content` (parsed JSON) | ~time |
+|---|----------------|----------------------------------|------|
+| 1 | show me all trucks | `{"type":"filter_by_type","types":["truck"]}` | ~10.5s |
+| 2 | zoom to Seattle | `{"type":"zoom_to","lat":47.606,"lng":-122.332,"zoom":11}` | ~0.7s |
+| 3 | how many buses are active | `{"type":"show_stat","text":"1 bus is active"}` | ~3.7s |
+| 4 | find stopped vehicles | `{"type":"filter_by_speed","min_kmh":0,"max_kmh":5}` | ~6.3s |
+| 5 | show sim-truck-01 | `{"type":"highlight_vehicles","vehicle_ids":["sim-truck-01"]}` | ~4.2s |
+| 6 | what's the fastest vehicle | `{"type":"highlight_vehicles","vehicle_ids":["sim-air-01"]}` | ~3.7s |
+| 7 | show everything | `{"type":"answer_text","text":"Here is the current status of the Nexus Logistics fleet. There are 4 vehicles: …"}` (prose summary; dashboard **also** maps the exact phrases *show everything* / *show all* / *reset* / *clear* to **`clear_filters`** without calling Ollama) | ~7.0s |
+| 8 | zoom to New York | `{"type":"zoom_to","lat":40.7128,"lng":-74.006,"zoom":11}` | ~0.7s |
+
+**Performance:** simple **`zoom_to`** / short structured answers often return in **under ~1s** after the model is warm; heavier reasoning queries on this model were observed around **4–11s** in the table above.
 
 ---
 
@@ -142,6 +221,7 @@ Latencies are single `curl` samples (`time_total`); not a load test unless noted
 | `http://127.0.0.1/api/live/trucks` | GET | 200 | ~0.003s | In-memory simulation |
 | `http://127.0.0.1/api/live/buses` | GET | 200 | ~0.003s | In-memory simulation |
 | `http://127.0.0.1/api/live/all` | GET | 200 | ~0.17s | Redis + OpenSky/simulated aircraft + simulated trucks/buses |
+| `http://127.0.0.1/api/live/stream` | GET | **200** (chunked SSE) | — | **`curl -N`**; not rate-limited; requires **`cmd/simulator`** or other producers for **`location-update`** traffic |
 | `http://127.0.0.1/api/metrics` | GET | 200 | ~0.003s | Proxied tracking Prometheus text |
 | `http://127.0.0.1:3000/health` | GET | 200 | ~0.001s | Direct tracking |
 | `http://127.0.0.1:3000/metrics` | GET | 200 | ~0.002s | Direct tracking metrics |
@@ -165,12 +245,13 @@ Latencies are single `curl` samples (`time_total`); not a load test unless noted
 | Integration | Verified? | How |
 |-------------|-----------|-----|
 | gRPC → Kafka produce | **Yes** | `SendPing` success + `ingestion_pings_produced_total` counter present on `:9091/metrics` |
-| Kafka → tracking consume → Redis | **Yes** | After gRPC client, `redis-cli GET vehicle:vehicle-123:latest` returned JSON; ~1000 `vehicle:*:latest` keys present (prior load) |
+| Kafka → tracking consume → Redis | **Yes** | After gRPC client, `redis-cli GET vehicle:vehicle-123:latest` returned JSON; ~1000 `vehicle:*:latest` keys present (prior load); with **`cmd/simulator`**, expect keys like **`vehicle:sim-truck-01:latest`** (`SCAN` / `KEYS 'vehicle:*:latest'` for demos) |
 | Kafka → tracking consume → Postgres | **Yes** | Large historical `COUNT(*)` plus **single-message** proof: produced JSON for `phase1provekafka` to `vehicle-locations`; `psql` showed row; HTTP 200 matched payload |
 | Kafka → route consume | **Yes** | `docker logs route-service` shows `Acquired lock for vehicle ...` / `Route calculation complete` when `route-requests` has traffic (including `kafka-console-producer` test and bench backlog) |
 | Kafka `route-updates` consumed | **Yes** | `RouteUpdateConsumer` → Redis `route:status:{vehicleId}` (TTL 300s); malformed JSON → log warn, skip |
 | Redis read cache on `GET /tracking/:id` | **Yes** | **End-to-end:** `DEL vehicle:{id}:latest` → HTTP 404 → produce to Kafka → Redis key + HTTP 200 (see `PHASE1_INVESTIGATION.md` §3) |
 | `tracking_messages_consumed_total` on `/metrics` | **Fixed** | Consumer uses the same `Registry` instance passed to `startConsumer(register)` |
+| SSE **`location-update`** | **Yes** (design) | Consumer → **`broadcastLocationUpdate`** → all **`GET /live/stream`** clients; verify with **`curl -N`** + simulator (see **Real-time vehicle stream** above) |
 | gRPC reflection | **Yes** | `grpcurl` (Docker `fullstorydev/grpcurl`) `list` on `host.docker.internal:50051` → `tracker.TrackerService` |
 | Prometheus scrape | **Yes** | `up` query returned `1` for all three configured jobs |
 | Nginx → gRPC | **No** | No `grpc_pass` location; only TCP upstream definition unused by HTTP locations |

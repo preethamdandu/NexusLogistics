@@ -3,16 +3,23 @@
 import { useQuery } from '@tanstack/react-query';
 import type { LucideIcon } from 'lucide-react';
 import { Activity, AlertTriangle, Radio, Truck } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { HealthPanel } from '@/components/HealthPanel';
+import type { ReactElement, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import CommandBar from '@/components/CommandBar';
+import { CountUpNumber } from '@/components/CountUpNumber';
+import { HeaderClock } from '@/components/HeaderClock';
+import { LinksPanel } from '@/components/LinksPanel';
+import { LiveFeedPanel } from '@/components/LiveFeedPanel';
 import MapComponent from '@/components/Map';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { fetchDashboardLiveVehicles } from '@/lib/api';
+import { ServicesPanel } from '@/components/ServicesPanel';
+import { StandardUiToggle } from '@/components/StandardUiToggle';
 import {
     allProbesOk,
     fetchServiceHealth,
     type HealthSnapshot,
 } from '@/lib/health';
+import { useFleetAi } from '@/lib/useFleetAi';
+import { useLiveVehicleStream } from '@/lib/useLiveVehicleStream';
 import { cn } from '@/lib/utils';
 
 const METRICS_RATE_TITLE =
@@ -21,48 +28,60 @@ const METRICS_RATE_TITLE =
 interface StatCardProps {
     title: string;
     value: ReactNode;
+    valueMono?: boolean;
+    valueClassName?: string;
+    subtitle?: string;
     icon: LucideIcon;
-    className?: string;
     valueTitle?: string;
 }
 
-function StatCard({ title, value, icon: Icon, className, valueTitle }: StatCardProps) {
+function StatCard({
+    title,
+    value,
+    valueMono,
+    valueClassName,
+    subtitle,
+    icon: Icon,
+    valueTitle,
+}: StatCardProps): ReactElement {
     return (
-        <div
-            className={cn(
-                'rounded-xl border border-border bg-card text-card-foreground',
-                className
-            )}
-        >
-            <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
-                <h3 className="text-sm font-medium tracking-tight">{title}</h3>
-                <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+        <div className="rounded-md border border-[color:var(--cc-border)] bg-[color:var(--cc-bg-panel)] px-4 py-4">
+            <div className="flex items-start justify-between gap-2">
+                <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--cc-text-muted)]">
+                    {title}
+                </h3>
+                <Icon className="h-3.5 w-3.5 shrink-0 text-[color:var(--cc-text-muted)]" aria-hidden />
             </div>
-            <div className="p-6 pt-0">
-                <div className="text-2xl font-bold" title={valueTitle}>
-                    {value}
-                </div>
+            <div
+                className={cn(
+                    'mt-2 text-[28px] font-bold leading-none',
+                    valueMono && 'cc-mono tabular-nums',
+                    valueClassName
+                )}
+                title={valueTitle}
+            >
+                {value}
             </div>
+            {subtitle ? (
+                <p className="cc-mono mt-2 text-[10px] text-[color:var(--cc-text-muted)]">{subtitle}</p>
+            ) : null}
         </div>
     );
 }
 
-function DashboardSkeleton() {
+function DashboardSkeleton(): ReactElement {
     return (
-        <div className="space-y-8" aria-busy="true" aria-label="Loading dashboard">
-            <div className="space-y-2">
-                <div className="h-9 w-48 animate-pulse rounded-md bg-muted" />
-                <div className="h-5 w-72 animate-pulse rounded-md bg-muted" />
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
+        <div className="space-y-6" aria-busy="true" aria-label="Loading dashboard">
+            <div className="h-12 animate-pulse rounded-md border border-[color:var(--cc-border-subtle)] bg-[color:var(--cc-bg-secondary)]" />
+            <div className="grid gap-3 sm:grid-cols-3">
                 {[0, 1, 2].map((i) => (
                     <div
                         key={i}
-                        className="h-28 animate-pulse rounded-xl border border-border bg-card"
+                        className="h-28 animate-pulse rounded-md border border-[color:var(--cc-border-subtle)] bg-[color:var(--cc-bg-secondary)]"
                     />
                 ))}
             </div>
-            <div className="h-[600px] animate-pulse rounded-xl border border-border bg-muted/40" />
+            <div className="h-[50vh] min-h-[300px] animate-pulse rounded-md border border-[color:var(--cc-border-subtle)] bg-[color:var(--cc-bg-secondary)]" />
         </div>
     );
 }
@@ -73,23 +92,25 @@ function systemStatusLabel(
     snapshot: HealthSnapshot | undefined
 ): ReactNode {
     if (isLoading) {
-        return <span className="text-muted-foreground">Checking…</span>;
+        return <span className="text-[color:var(--cc-accent-warning)]">CHECKING</span>;
     }
     if (isError || !snapshot) {
-        return <span className="text-destructive">Unknown</span>;
+        return <span className="text-[color:var(--cc-accent-danger)]">UNKNOWN</span>;
     }
     if (snapshot.probes.length === 0) {
-        return '—';
+        return <span className="text-[color:var(--cc-text-muted)]">—</span>;
     }
-    return allProbesOk(snapshot) ? 'Operational' : 'Degraded';
+    return allProbesOk(snapshot) ? (
+        <span className="text-[color:var(--cc-accent-primary)]">OPERATIONAL</span>
+    ) : (
+        <span className="text-[color:var(--cc-accent-warning)]">DEGRADED</span>
+    );
 }
 
-export default function Dashboard() {
-    const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-        queryKey: ['dashboardLiveVehicles'],
-        queryFn: fetchDashboardLiveVehicles,
-        refetchInterval: 5000,
-    });
+export default function Dashboard(): ReactElement {
+    const live = useLiveVehicleStream();
+    const fleetAi = useFleetAi(live.vehicles);
+    const [showSimulatorHint, setShowSimulatorHint] = useState(false);
 
     const healthQuery = useQuery({
         queryKey: ['serviceHealth'],
@@ -97,31 +118,99 @@ export default function Dashboard() {
         refetchInterval: 15_000,
     });
 
-    const vehicles = data?.vehicles ?? [];
-    const aircraftFeedUnavailable = data?.aircraftFeedUnavailable ?? false;
+    useEffect(() => {
+        const eligible =
+            live.isConnected &&
+            live.vehicles.length === 0 &&
+            !live.isLoading &&
+            !live.isError;
+
+        if (!eligible) {
+            return () => {
+                /* noop */
+            };
+        }
+
+        const t = window.setTimeout(() => {
+            setShowSimulatorHint(true);
+        }, 10_000);
+
+        return () => {
+            window.clearTimeout(t);
+            setShowSimulatorHint(false);
+        };
+    }, [live.isConnected, live.vehicles.length, live.isLoading, live.isError]);
+
+    const vehicles = live.vehicles;
+    const fleetRoutePath =
+        fleetAi.lastAction?.type === 'route_vehicle' &&
+        fleetAi.lastAction.path != null &&
+        fleetAi.lastAction.path.length >= 2
+            ? fleetAi.lastAction.path
+            : null;
+    const mapFleetAction =
+        fleetAi.lastAction?.type === 'clear_filters' ? null : fleetAi.lastAction;
+    const aircraftFeedUnavailable = live.aircraftFeedUnavailable;
+
+    const clearFleetAction = fleetAi.clearAction;
+    useEffect(() => {
+        const onDocKey = (e: globalThis.KeyboardEvent): void => {
+            if (e.key !== 'Escape') return;
+            const t = e.target;
+            if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) return;
+            clearFleetAction();
+        };
+        document.addEventListener('keydown', onDocKey);
+        return () => document.removeEventListener('keydown', onDocKey);
+    }, [clearFleetAction]);
 
     const errorMessage =
-        error instanceof Error ? error.message : 'Could not load live fleet data.';
+        live.error instanceof Error ? live.error.message : 'Could not load live fleet data.';
 
     return (
-        <div className="flex min-h-screen flex-col space-y-8 bg-muted/10 p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-                    <p className="text-muted-foreground">Real-time fleet overview</p>
+        <div className="cc-app-shell relative z-10 flex min-h-screen flex-col p-4 md:p-6">
+            <header className="mb-6 flex flex-col gap-4 border-b border-[color:var(--cc-border-subtle)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-3">
+                    <span
+                        className="cc-header-live-dot h-2 w-2 shrink-0 rounded-full bg-[color:var(--cc-accent-primary)]"
+                        aria-hidden
+                    />
+                    <h1 className="text-sm font-bold uppercase tracking-[0.2em] text-[color:var(--cc-accent-primary)]">
+                        Nexus Logistics
+                    </h1>
                 </div>
-                <ThemeToggle />
-            </div>
+                <div className="flex flex-wrap items-center gap-4">
+                    <HeaderClock />
+                    <div
+                        className={cn(
+                            'cc-mono flex items-center gap-2 rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-wide',
+                            live.isConnected
+                                ? 'border-[color:var(--cc-accent-primary)] text-[color:var(--cc-accent-primary)]'
+                                : 'border-[color:var(--cc-accent-warning)] text-[color:var(--cc-accent-warning)]'
+                        )}
+                    >
+                        <span
+                            className={cn(
+                                'h-1.5 w-1.5 rounded-full',
+                                live.isConnected
+                                    ? 'bg-[color:var(--cc-accent-primary)]'
+                                    : 'bg-[color:var(--cc-accent-warning)]'
+                            )}
+                            aria-hidden
+                        />
+                        {live.isConnected ? 'Live' : 'Reconnecting'}
+                    </div>
+                    <StandardUiToggle />
+                </div>
+            </header>
 
-            <HealthPanel />
-
-            {aircraftFeedUnavailable && !isLoading && !isError && (
+            {aircraftFeedUnavailable && !live.isLoading && !live.isError && (
                 <div
                     role="status"
-                    className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-foreground"
+                    className="cc-mono mb-4 flex items-start gap-3 rounded-md border border-[color:var(--cc-accent-warning)] bg-[color:var(--cc-bg-panel)] px-3 py-2 text-[11px] text-[color:var(--cc-text-secondary)]"
                 >
                     <AlertTriangle
-                        className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-500"
+                        className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--cc-accent-warning)]"
                         aria-hidden
                     />
                     <p>
@@ -131,72 +220,89 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {isLoading && <DashboardSkeleton />}
+            {live.isLoading && <DashboardSkeleton />}
 
-            {!isLoading && isError && (
+            {!live.isLoading && live.isError && (
                 <div
                     role="alert"
-                    className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm"
+                    className="cc-mono rounded-md border border-[color:var(--cc-accent-danger)] bg-[color:var(--cc-bg-panel)] px-4 py-3 text-[12px]"
                 >
-                    <p className="font-medium text-destructive">Failed to load live data</p>
-                    <p className="mt-1 text-muted-foreground">{errorMessage}</p>
+                    <p className="font-semibold uppercase tracking-wide text-[color:var(--cc-accent-danger)]">
+                        Failed to load live data
+                    </p>
+                    <p className="mt-2 text-[color:var(--cc-text-secondary)]">{errorMessage}</p>
                     <button
                         type="button"
-                        onClick={() => void refetch()}
-                        className="mt-3 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                        onClick={() => void live.reloadSeed()}
+                        className="mt-3 rounded border border-[color:var(--cc-accent-danger)] bg-[color:var(--cc-bg-primary)] px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-[color:var(--cc-text-primary)] hover:bg-[color:var(--cc-bg-panel-hover)]"
                     >
                         Retry
                     </button>
                 </div>
             )}
 
-            {!isLoading && !isError && (
-                <>
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <StatCard title="Active vehicles" value={vehicles.length} icon={Truck} />
-                        <StatCard
-                            title="System status"
-                            value={systemStatusLabel(
-                                healthQuery.isLoading,
-                                healthQuery.isError,
-                                healthQuery.data
-                            )}
-                            icon={Activity}
-                            valueTitle="Gateway + tracking + route + ingestion probes via /api/health/* and /health."
+            {!live.isLoading && !live.isError && (
+                <div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-[1fr_260px]">
+                    <div className="flex min-h-0 flex-col gap-4">
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            <StatCard
+                                title="Fleet"
+                                value={<CountUpNumber value={vehicles.length} />}
+                                valueMono
+                                valueClassName="text-[color:var(--cc-accent-primary)]"
+                                icon={Truck}
+                            />
+                            <StatCard
+                                title="System"
+                                value={systemStatusLabel(
+                                    healthQuery.isLoading,
+                                    healthQuery.isError,
+                                    healthQuery.data
+                                )}
+                                valueMono
+                                valueClassName="text-[color:var(--cc-accent-secondary)]"
+                                subtitle="Gateway + probes"
+                                icon={Activity}
+                                valueTitle="Gateway + tracking + route + ingestion probes via /api/health/* and /health."
+                            />
+                            <StatCard
+                                title="Throughput"
+                                value="—"
+                                valueMono
+                                valueClassName="text-[color:var(--cc-accent-warning)]"
+                                subtitle="Awaiting metrics wiring"
+                                icon={Radio}
+                                valueTitle={METRICS_RATE_TITLE}
+                            />
+                        </div>
+
+                        <CommandBar
+                            isAvailable={fleetAi.isAvailable}
+                            isChecking={fleetAi.isChecking}
+                            isLoading={fleetAi.isLoading}
+                            lastAction={fleetAi.lastAction}
+                            history={fleetAi.history}
+                            clearAction={fleetAi.clearAction}
+                            dismissAutoMessage={fleetAi.dismissAutoMessage}
+                            submitQuery={fleetAi.submitQuery}
                         />
-                        <StatCard
-                            title="Updates / sec"
-                            value="—"
-                            icon={Radio}
-                            valueTitle={METRICS_RATE_TITLE}
+
+                        <MapComponent
+                            vehicles={vehicles}
+                            showSimulatorEmptyHint={showSimulatorHint}
+                            streamConnected={live.isConnected}
+                            fleetAction={mapFleetAction}
+                            routeLoadingVehicleId={fleetAi.routeLoadingVehicleId}
+                            fleetRoutePath={fleetRoutePath}
                         />
                     </div>
 
-                    <div className="rounded-xl border border-border bg-card text-card-foreground">
-                        <div className="flex flex-col space-y-1.5 p-6">
-                            <h3 className="font-semibold leading-none tracking-tight">Live map</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Positions from the gateway{' '}
-                                <code className="text-xs">/api/live/all</code>
-                                {isFetching ? ' (refreshing…)' : ''}.
-                            </p>
-                        </div>
-                        <div className="p-6 pt-0">
-                            {vehicles.length === 0 ? (
-                                <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
-                                    <p className="font-medium">No vehicles to show</p>
-                                    <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                                        When the stack is up, ingest location pings (gRPC → Kafka) or
-                                        wait for simulated trucks and buses. Cached Redis vehicles appear
-                                        here too.
-                                    </p>
-                                </div>
-                            ) : (
-                                <MapComponent vehicles={vehicles} />
-                            )}
-                        </div>
-                    </div>
-                </>
+                    <aside className="flex min-h-0 w-full flex-col gap-0 md:max-w-[260px] md:justify-self-end">
+                        <ServicesPanel query={healthQuery} />
+                        <LiveFeedPanel entries={live.liveFeed} />
+                        <LinksPanel />
+                    </aside>
+                </div>
             )}
         </div>
     );

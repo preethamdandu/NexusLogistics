@@ -1,69 +1,353 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-  }
+/* Command center palette (single source of truth for UI chrome + map chrome) */
+:root {
+  --cc-bg-primary: #0a0e17;
+  --cc-bg-secondary: #0d1219;
+  --cc-bg-panel: rgba(0, 255, 200, 0.03);
+  --cc-bg-panel-hover: rgba(0, 255, 200, 0.06);
+  --cc-accent-primary: #00ffc8;
+  --cc-accent-secondary: #0088ff;
+  --cc-accent-warning: #ffaa00;
+  --cc-accent-danger: #ff4444;
+  --cc-text-primary: #e0e6f0;
+  --cc-text-secondary: rgba(255, 255, 255, 0.45);
+  --cc-text-muted: rgba(255, 255, 255, 0.25);
+  --cc-border: rgba(0, 255, 200, 0.12);
+  --cc-border-subtle: rgba(0, 255, 200, 0.06);
+  --cc-glow-cyan: 0 0 12px rgba(0, 255, 200, 0.3);
+  --cc-glow-blue: 0 0 12px rgba(0, 136, 255, 0.3);
+  --cc-glow-purple: 0 0 12px rgba(147, 51, 234, 0.3);
+  --cc-truck-color: #0088ff;
+  --cc-bus-color: #00ffc8;
+  --cc-aircraft-color: #9333ea;
+  --cc-truck-trail: #33aaff;
+  --cc-bus-trail: #44ffd6;
+  --cc-aircraft-trail: #c084fc;
+  --cc-speed-unknown: var(--cc-text-muted);
+  --cc-speed-ok: var(--cc-accent-primary);
+  --cc-speed-slow: var(--cc-accent-warning);
+  --cc-speed-stop: var(--cc-accent-danger);
+}
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
+/* Tailwind semantic tokens aligned to command center (dark default) */
+:root {
+  --background: 218 44% 6%;
+  --foreground: 220 24% 92%;
+  --card: 218 38% 8%;
+  --card-foreground: 220 24% 92%;
+  --popover: 218 38% 8%;
+  --popover-foreground: 220 24% 92%;
+  --primary: 168 100% 50%;
+  --primary-foreground: 218 44% 8%;
+  --secondary: 218 32% 14%;
+  --secondary-foreground: 220 20% 90%;
+  --muted: 218 28% 12%;
+  --muted-foreground: 220 12% 55%;
+  --accent: 218 32% 14%;
+  --accent-foreground: 220 24% 92%;
+  --destructive: 0 84% 58%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 168 40% 18%;
+  --input: 168 30% 16%;
+  --ring: 168 100% 45%;
+  --radius: 0.5rem;
+  --chart-1: 168 100% 50%;
+  --chart-2: 210 100% 55%;
+  --chart-3: 270 70% 60%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+}
+
+/* Standard UI escape: lighter surfaces when .dark is removed */
+html:not(.dark) {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --border: 214.3 31.8% 91.4%;
+}
+
+html:not(.dark) body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply min-h-screen font-sans antialiased;
+    background: var(--cc-bg-primary);
+    color: var(--cc-text-primary);
   }
+}
+
+/* Data / status readouts */
+.cc-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-feature-settings: 'liga' 0;
+}
+
+/* App shell: subtle scanline texture */
+.cc-app-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.cc-app-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 200, 0.012) 2px,
+    rgba(0, 255, 200, 0.012) 4px
+  );
+}
+
+/* Header status dot */
+@keyframes cc-header-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(0, 255, 200, 0.35);
+  }
+  50% {
+    opacity: 0.85;
+    box-shadow: 0 0 0 6px rgba(0, 255, 200, 0);
+  }
+}
+
+.cc-header-live-dot {
+  animation: cc-header-pulse-dot 2s ease-in-out infinite;
+}
+
+/* Leaflet: dark attribution + controls */
+.leaflet-container {
+  background: var(--cc-bg-secondary);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.leaflet-control-attribution {
+  background: rgba(10, 14, 23, 0.85) !important;
+  color: var(--cc-text-secondary) !important;
+  border-top: 1px solid var(--cc-border-subtle) !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--cc-accent-secondary) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--cc-bg-secondary) !important;
+  color: var(--cc-text-primary) !important;
+  border: 1px solid var(--cc-border) !important;
+  border-radius: 6px !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--cc-bg-secondary) !important;
+  border: 1px solid var(--cc-border) !important;
+}
+
+/* Vehicle markers (Leaflet divIcon; colors via CSS variables) */
+.vehicle-marker-leaflet {
+  background: transparent !important;
+  border: none !important;
+}
+
+.vehicle-marker-root {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vehicle-marker-ring-pulse {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--vm-color);
+  opacity: 0.28;
+  z-index: 1;
+  animation: vehicle-marker-ring-pulse 2s ease-in-out infinite;
+}
+
+@keyframes vehicle-marker-ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.28;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.12;
+  }
+}
+
+.vehicle-marker-dot {
+  position: relative;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--vm-color);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--vm-color) 55%, transparent);
+}
+
+.vehicle-marker-dot.vehicle-marker-pulse {
+  animation: vehicle-marker-hitpulse 320ms ease-out 1;
+}
+
+@keyframes vehicle-marker-hitpulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--vm-color) 55%, transparent);
+  }
+  50% {
+    transform: scale(1.35);
+    box-shadow: var(--cc-glow-cyan), var(--cc-glow-blue);
+  }
+}
+
+.vehicle-marker-rotate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Live feed row enter */
+@keyframes live-feed-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.live-feed-row {
+  animation: live-feed-row-in 200ms ease-out 1;
+}
+
+@keyframes cc-cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.cc-feed-cursor {
+  animation: cc-cursor-blink 1.1s step-end infinite;
+}
+
+/* AI command bar */
+@keyframes cc-cmd-border-pulse {
+  0%,
+  100% {
+    border-color: rgba(0, 255, 200, 0.35);
+    box-shadow: 0 0 0 0 rgba(0, 255, 200, 0.12);
+  }
+  50% {
+    border-color: rgba(0, 255, 200, 0.85);
+    box-shadow: 0 0 12px rgba(0, 255, 200, 0.22);
+  }
+}
+
+.cc-cmd-bar-loading {
+  animation: cc-cmd-border-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cc-cmd-result-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cc-cmd-result-panel {
+  animation: cc-cmd-result-in 200ms ease-out forwards;
+}
+
+@keyframes cc-ai-badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.cc-ai-badge-thinking {
+  animation: cc-ai-badge-pulse 1.2s ease-in-out infinite;
+}
+
+/* Fleet highlight / dim (Leaflet divIcon) */
+.vehicle-marker-root--dim {
+  opacity: 0.25;
+}
+
+.vehicle-marker-root--hl .vehicle-marker-dot {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--vm-color) 70%, transparent),
+    0 0 28px color-mix(in srgb, var(--vm-color) 45%, transparent);
+}
+
+.vehicle-marker-ring-pulse--hl {
+  width: 26px !important;
+  height: 26px !important;
+  opacity: 0.48 !important;
+}
+
+.fleet-route-glow path {
+  filter: drop-shadow(0 0 6px rgba(0, 255, 200, 0.55));
+}
+
+@keyframes fleet-route-loading-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.25);
+    opacity: 0.45;
+  }
+}
+
+.fleet-route-loading-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cc-accent-primary);
+  animation: fleet-route-loading-pulse 1s ease-in-out infinite;
 }

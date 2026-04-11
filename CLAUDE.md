@@ -20,9 +20,10 @@
 
 1. Client → **gRPC** `localhost:50051` → ingestion serializes ping JSON → **Kafka** `vehicle-locations`.
 2. **tracking-service** consumer reads topic → **Redis** `SET vehicle:{id}:latest EX 86400` + **Postgres** `INSERT vehicle_locations`.
-3. Browser or API client → **Nginx** `:80` → **tracking** `/tracking/:id` (Redis read-through / DB fallback + cache fill) or live aggregate endpoints.
+3. Browser or API client → **Nginx** `:80` → **tracking** `/tracking/:id` (Redis read-through / DB fallback + cache fill), live aggregate endpoints, or **SSE** `GET /api/live/stream` → tracking `GET /live/stream` (broadcasts each Kafka-ingested location to connected clients).
 4. **route-service** (if messages exist on `route-requests`) → Redis `SETNX` lock → simulated work (`Thread.sleep`) → **Kafka** `route-updates` → same service’s consumer → Redis `route:status:{vehicleId}` (TTL 300s).
 5. **Gateway** `POST /api/routes/calculate` → route-service `POST /calculate` (Kafka enqueue); `GET /api/routes/status/{id}` → cached JSON or **404** JSON on miss.
+6. **AI fleet bar (Next.js):** Browser → Nginx **`/api/ai/tags`** / **`/api/ai/chat`** → host **Ollama** model **`gemma4:e2b`** with **`format: json`** → structured **`FleetAiAction`** JSON → map (`highlight` / `filter_by_type` / `filter_by_speed` / `zoom_to` / `route_vehicle` + status poll / dashed route polyline / `clear_filters`). Live fleet context is built only from **`useLiveVehicleStream`** (same `EventSource` as the dashboard); no extra npm AI SDKs.
 
 ```
 [Client] --gRPC:50051--> [ingestion] --produce--> [Kafka vehicle-locations]
@@ -39,7 +40,7 @@
 
 | Path | Purpose |
 |------|---------|
-| `ingestion-service/` | Go gRPC server, Kafka producer, `cmd/client`, `cmd/bench`, `proto/` |
+| `ingestion-service/` | Go gRPC server, Kafka producer, `cmd/client` (one-shot demo), **`cmd/simulator`** (continuous looped routes → `SendPing`), `cmd/bench`, `proto/` |
 | `tracking-service/` | Node API, Kafka consumer, Redis/Postgres config, `migrations/init.sql` + `post-init-002-vehicle-locations-unique.sql` (Compose init order after `init.sql`) |
 | `route-service/` | Spring Boot Kafka + Redis, `application.properties`, `cmd/bench` (Kafka producer to `route-requests`) |
 | `frontend/` | Next.js 16 app (map, API client) |
@@ -76,6 +77,15 @@ curl -s http://127.0.0.1:8081/actuator/health   # expect {"status":"UP"} when RE
 cd ingestion-service && go run ./cmd/client
 ```
 
+**Continuous vehicle simulator (host binary, not in Compose):** sends `SendPing` every **~1.5s** (flag `-tick`) for **6** vehicles on looped waypoint routes (SF / LA / Seattle), **~60 km/h** along the polyline (`-speed`), metadata **`x-vehicle-type`** = `truck` or `bus` (ingestion copies into Kafka JSON `vehicle_type`). Graceful **SIGINT/SIGTERM**.
+
+```bash
+cd ingestion-service && go run ./cmd/simulator
+# optional: -addr localhost:50051 -tick 1500ms -speed 60
+```
+
+**Live SSE:** after `docker compose up -d`, `curl -N http://localhost/api/live/stream` (or `:80`) — first event **`connected`**, then **`location-update`** with the same JSON shape the consumer processes (including **`vehicle_type`** when the ingestion image includes current `tracker.go`); **`:ping`** every **15s**. Nginx uses **`location = /api/live/stream`** with buffering off and **no** `limit_req`. If you edit `gateway/nginx.conf`, reload: `docker exec gateway nginx -s reload` (or recreate the gateway container). After changing **tracking-service** or **ingestion-service** code, rebuild those images so Compose containers match what you run on the host.
+
 **Important:** `route-service` requires `src/main/resources/application.properties` with `spring.data.redis.host` / `spring.kafka.bootstrap-servers` from env; without it the JVM defaults to `localhost` inside the container and Actuator stays `DOWN`.
 
 ## Tests (what exists)
@@ -84,9 +94,9 @@ cd ingestion-service && go run ./cmd/client
 |------|---------|----------|
 | Go ingestion | `cd ingestion-service && go vet ./... && go test ./...` | vet OK; **no `*_test.go` files** — tests are vacuous |
 | Route Java | `cd route-service && mvn test` | **No `src/test` sources** — Surefire runs zero tests |
-| Tracking Node | `npm test` | **Script missing** in `package.json` |
+| Tracking Node | `npm test` | Jest (`tracking.read-path.test.ts`) |
 | Tracking build | `cd tracking-service && npm run build` | `tsc` succeeds |
-| Frontend | `cd frontend && npm run build` | Next build succeeds; **`npm run lint` fails** (2 errors: `no-explicit-any` in `page.tsx`, `no-require-imports` in `tailwind.config.ts`) |
+| Frontend | `cd frontend && npm run lint && npm run build` | **0** / **0** (ESLint + Next **16.1.1**); AI command bar + map actions live under `frontend/src/components` and `frontend/src/lib` |
 
 CI (`.github/workflows/test.yaml`) mirrors the above expectations; it does not guarantee non-zero tests for Go/Java/tracking.
 
@@ -120,10 +130,10 @@ docker run --rm -v "$PWD:/work" -w /work registry.k8s.io/kustomize/kustomize:v5.
 
 ## Design choices (code-backed)
 
-- **Ingestion:** gRPC for typed pings; Kafka `acks=all` on producer (`ingestion-service/internal/kafka/producer.go`).
+- **Ingestion:** gRPC for typed pings; optional metadata **`x-vehicle-type`** (`truck` \| `bus`) → JSON field **`vehicle_type`** on the Kafka payload (`ingestion-service/internal/service/tracker.go`); Kafka `acks=all` on producer (`ingestion-service/internal/kafka/producer.go`).
 - **Tracking read path:** Redis key `vehicle:{id}:latest` first; on miss, Postgres latest row then `SET` with **TTL 86400s** (`tracking-service/src/api/server.ts`).
 - **Tracking write path (consumer):** On each Kafka message, Redis `SET` with same TTL + Postgres `INSERT ... ON CONFLICT (vehicle_id, timestamp) DO NOTHING` after migration `post-init-002-vehicle-locations-unique.sql` adds the unique constraint.
-- **Route optimization:** Redis `SETNX` lock per vehicle to skip overlapping work; **no graph algorithm** — `Thread.sleep(2000)` and mock JSON (`route-service/.../RouteOptimizer.java`).
+- **Route optimization:** Redis `SETNX` lock per vehicle; **`RouteOptimizer`** snaps positions to an internal **road graph**, runs **A\*** (A-star), publishes JSON with **`path`** `{lat,lng}` points, **`total_distance_meters`**, **`eta_seconds`** (`route-service/.../RouteOptimizer.java` + `com.nexus.route.graph`).
 - **Gateway:** `limit_req` 100 r/s (burst 50) on most APIs; **10 r/s** on `/api/metrics` (`gateway/nginx.conf`). README “10 req/s/IP” globally is inaccurate.
 - **gRPC** is not proxied on `:80`; clients use ingestion **`:50051`** directly. Nginx defines `upstream route_service` for `/api/routes/`.
 

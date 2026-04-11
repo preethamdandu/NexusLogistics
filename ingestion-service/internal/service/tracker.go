@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/nexus-logistics/ingestion-service/internal/kafka"
 	pb "github.com/nexus-logistics/ingestion-service/pb"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -35,27 +37,39 @@ func NewTrackerService(producer *kafka.Producer) *TrackerService {
 }
 
 type PingPayload struct {
-	VehicleID string  `json:"vehicle_id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Timestamp int64   `json:"timestamp"`
+	VehicleID   string  `json:"vehicle_id"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+	Timestamp   int64   `json:"timestamp"`
+	VehicleType string  `json:"vehicle_type,omitempty"`
 }
 
 func (s *TrackerService) SendPing(ctx context.Context, req *pb.LocationPing) (*pb.PingResponse, error) {
 	// log.Printf("Received ping from vehicle: %s", req.VehicleId)
 	pingsReceived.Inc()
 
-	payload := PingPayload{
-		VehicleID: req.VehicleId,
-		Latitude:  req.Latitude,
-		Longitude: req.Longitude,
-		Timestamp: req.Timestamp,
+	vt := "truck"
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if v := md.Get("x-vehicle-type"); len(v) > 0 && v[0] != "" {
+			t := strings.ToLower(strings.TrimSpace(v[0]))
+			if t == "bus" || t == "truck" || t == "aircraft" {
+				vt = t
+			}
+		}
 	}
 
-    // Use current time if timestamp is 0 or missing, though proto default is 0.
-    if payload.Timestamp == 0 {
-        payload.Timestamp = time.Now().Unix()
-    }
+	payload := PingPayload{
+		VehicleID:   req.VehicleId,
+		Latitude:    req.Latitude,
+		Longitude:   req.Longitude,
+		Timestamp:   req.Timestamp,
+		VehicleType: vt,
+	}
+
+	// Use current time if timestamp is 0 or missing, though proto default is 0.
+	if payload.Timestamp == 0 {
+		payload.Timestamp = time.Now().Unix()
+	}
 
 	err := s.producer.Produce(req.VehicleId, payload)
 	if err != nil {
