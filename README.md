@@ -55,7 +55,7 @@ A learning project exploring polyglot microservices for real-time vehicle tracki
 ### Live Dashboard
 
 <p align="center">
-  <img src="docs/images/dashboard.png" alt="NexusLogistics Dashboard" width="100%" />
+  <img src="docs/images/dashboard.jpg" alt="NexusLogistics Dashboard" width="100%" />
 </p>
 
 <p align="center"><em>Real-time fleet tracking with live map, KPIs, and system health monitoring</em></p>
@@ -102,6 +102,8 @@ A learning project exploring polyglot microservices for real-time vehicle tracki
 ---
 
 ## 🚀 Quick Start
+
+New here? See the full **[Getting Started guide](GETTING_STARTED.md)** for step-by-step setup instructions (prerequisites, simulator, dashboard, optional AI, tests, and troubleshooting).
 
 ### Prerequisites
 
