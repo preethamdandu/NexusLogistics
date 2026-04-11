@@ -1,663 +1,205 @@
 <p align="center">
-  <img src="docs/images/logo.svg" alt="NexusLogistics Logo" width="120" />
+  <img src="docs/images/logo.svg" alt="NexusLogistics" width="100" />
 </p>
 
-<h1 align="center">🚀 NexusLogistics</h1>
+<h1 align="center">NexusLogistics</h1>
+
+<p align="center"><strong>Real-time distributed vehicle tracking with AI-assisted fleet control</strong></p>
 
 <p align="center">
-  <strong>A Globally Distributed Package Tracking & Route Optimization System</strong>
-</p>
-
-<p align="center">
-  <a href="https://github.com/preethamdandu/NexusLogistics/actions/workflows/ci.yaml"><img src="https://img.shields.io/github/actions/workflow/status/preethamdandu/NexusLogistics/ci.yaml?branch=main&style=flat-square&label=CI" alt="CI Status" /></a>
-  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome" />
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Go-1.21-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go" />
-  <img src="https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
-  <img src="https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java" />
-  <img src="https://img.shields.io/badge/Next.js-16.1-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <a href="https://github.com/preethamdandu/NexusLogistics/actions/workflows/test.yaml"><img src="https://img.shields.io/github/actions/workflow/status/preethamdandu/NexusLogistics/test.yaml?branch=main&style=for-the-badge&label=Tests" alt="GitHub Actions Tests" /></a>
+  <img src="https://img.shields.io/badge/Go-1.23-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go 1.23" />
+  <img src="https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js 20" />
+  <img src="https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 17" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3.1-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Boot 3.1" />
+  <img src="https://img.shields.io/badge/Next.js-16.1-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 16.1" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 19" />
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker Compose" />
   <img src="https://img.shields.io/badge/Kubernetes-Ready-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white" alt="Kubernetes" />
 </p>
 
-<p align="center">
-  <a href="#-why-nexuslogistics">Why?</a> •
-  <a href="#-demo">Demo</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-tech-decisions">Tech Decisions</a> •
-  <a href="#-api">API</a> •
-  <a href="#-deployment">Deploy</a> •
-  <a href="#-troubleshooting">Troubleshooting</a>
-</p>
-
 ---
 
-## 🤔 Why NexusLogistics?
+## What this is
 
-A learning project exploring polyglot microservices for real-time vehicle tracking. Three services in three languages communicate via gRPC and Kafka, with Redis caching, Postgres persistence, and Prometheus/Grafana observability. The goal was to build something end-to-end — ingest → queue → consume → cache → serve — rather than any single layer in isolation.
+**NexusLogistics** is a **polyglot microservices** demo: **Go** ingests vehicle pings over **gRPC**, **Kafka** moves events, **Node.js** serves a cache-aside **REST** API and **Server-Sent Events** to the browser, and **Java / Spring Boot** consumes route jobs, runs **A\*** on a small **San Francisco road graph**, and publishes results back through Kafka. A **Next.js** dashboard shows a dark **command-center** map (**Leaflet** + **CARTO** dark tiles) with smooth marker motion. An optional **AI command bar** sends natural language to **Ollama** (`gemma4:e2b`) through the **Nginx** gateway and turns structured JSON into map actions—**no cloud LLM**, no API keys.
 
-**Stack choices:**
-
-| Service | Language | Role |
-|---------|----------|------|
-| ingestion-service | Go | gRPC server that validates vehicle pings and produces to Kafka |
-| tracking-service | Node.js / TypeScript | Kafka consumer + REST read API with Redis cache-aside |
-| route-service | Java / Spring Boot | Kafka consumer for route requests, Redis distributed lock, publishes updates |
-| frontend | Next.js 16 | Live map dashboard |
-
----
-
-## 🎬 Demo
-
-### Live Dashboard
+See the full **[Getting Started](GETTING_STARTED.md)** guide to clone the stack, run the vehicle simulator, enable AI, and troubleshoot.
 
 <p align="center">
-  <img src="docs/images/dashboard.jpg" alt="NexusLogistics Dashboard" width="100%" />
+  <img src="docs/images/dashboard.png" alt="NexusLogistics command center" width="900" />
 </p>
 
-<p align="center"><em>Real-time fleet tracking with live map, KPIs, and system health monitoring</em></p>
-
-### Key Capabilities
-
-<table>
-<tr>
-<td width="50%">
-
-**🗺️ Real-Time Tracking**
-- Live vehicle positions on map
-- Sub-second location updates
-- Historical route visualization
-
-</td>
-<td width="50%">
-
-**📊 Analytics Dashboard**
-- Active vehicle count
-- System health status
-- Updates per second metrics
-
-</td>
-</tr>
-<tr>
-<td width="50%">
-
-**⚡ Performance**
-- See [**Performance**](#-performance) below for measured throughput and latency (k6, 60s on Docker Compose).
-
-</td>
-<td width="50%">
-
-**🛡️ Operational hardening**
-- Nginx `limit_req`: **~100 req/s per IP** on most `/api/*` paths; **10 req/s** on `/api/metrics`
-- Gateway in front of the API (no end-user auth in this demo stack)
-- Prometheus + Grafana observability
-
-</td>
-</tr>
-</table>
+<p align="center"><em>Command center dashboard: live map, AI fleet query bar, SSE-driven live feed, service health probes, and KPI strip.</em></p>
 
 ---
 
-## 🚀 Quick Start
+## Architecture
 
-New here? See the full **[Getting Started guide](GETTING_STARTED.md)** for step-by-step setup instructions (prerequisites, simulator, dashboard, optional AI, tests, and troubleshooting).
+```mermaid
+flowchart TB
+    subgraph dev["Developer machine"]
+        SIM["Vehicle simulator<br/>(go run ./cmd/simulator)"]
+        OLL["Ollama (optional)<br/>gemma4:e2b"]
+    end
 
-### Prerequisites
+    subgraph ingest["Ingestion — Go"]
+        GRPC["gRPC :50051<br/>SendPing"]
+        KP["Kafka producer"]
+    end
 
-```bash
-# Required
-docker --version          # v20.10+
-docker compose version      # Compose v2 plugin (v2.0+)
+    subgraph bus["Kafka"]
+        TLOC["Topic: vehicle-locations"]
+        TREQ["Topic: route-requests"]
+        TUPD["Topic: route-updates"]
+    end
 
-# Optional: legacy standalone binary, if installed
-# docker-compose --version
+    subgraph track["Tracking — Node.js :3000"]
+        KC["Kafka consumer"]
+        RDS[("Redis latest keys")]
+        PG[("PostgreSQL history")]
+        SSE["GET /live/stream<br/>SSE hub"]
+    end
 
-# Recommended
-8GB RAM minimum
+    subgraph gw["Gateway — Nginx :80"]
+        PROXY["/api/* reverse proxy"]
+        AISUB["/api/ai/* → Ollama"]
+        SSEPASS["/api/live/stream<br/>no buffering"]
+    end
+
+    subgraph fe["Frontend — Next.js :3002"]
+        MAP["Map + useLiveVehicleStream"]
+        AI["useFleetAi → /api/ai/chat"]
+    end
+
+    subgraph route["Route — Java :8080 host :8081"]
+        KR["Kafka listener<br/>route-requests"]
+        LOCK["Redis SETNX lock"]
+        AST["A* + SF graph"]
+        RUC["RouteUpdateConsumer<br/>route-updates"]
+    end
+
+    subgraph obs["Observability"]
+        PR["Prometheus :9090<br/>ingestion + tracking + route"]
+        GF["Grafana :3001"]
+        KUI["Kafka UI :8080"]
+    end
+
+    SIM --> GRPC
+    GRPC --> KP --> TLOC
+    TLOC --> KC
+    KC --> RDS
+    KC --> PG
+    KC --> SSE
+    SSEPASS --> SSE
+    fe --> PROXY
+    PROXY --> track
+    AI --> AISUB
+    AISUB --> OLL
+    TREQ --> KR
+    KR --> LOCK
+    KR --> AST
+    AST --> TUPD
+    TUPD --> RUC
+    RUC --> RDS
+    PR --> GF
 ```
 
-### One-Command Launch
+**Data flow (happy path):** the **simulator** (or any gRPC client) calls **`SendPing`** on **ingestion**; ingestion writes to Kafka topic **`vehicle-locations`**. **tracking-service** consumes each message, **`SET`s Redis** `vehicle:{id}:latest` with **86400s TTL**, **`INSERT … ON CONFLICT DO NOTHING`** into Postgres, then **`broadcastLocationUpdate`** so every open **`EventSource`** on **`GET /api/live/stream`** (Nginx → **`/live/stream`** on tracking) receives a **`location-update`** event. The Next.js app seeds from **`GET /api/live/all`**, then merges SSE payloads in **`useLiveVehicleStream`**; **`VehicleLayer`** interpolates marker moves over **1500ms** with **`requestAnimationFrame`**. For routes, the gateway forwards **`POST /api/routes/calculate`** to Spring; the worker uses a **Redis lock**, runs **A\***, publishes **`route-updates`**, and **`RouteUpdateConsumer`** caches **`route:status:{vehicleId}`** in Redis so the UI can poll **`GET /api/routes/status/{id}`** via the gateway.
+
+---
+
+## Key features
+
+| Feature | Description |
+|--------|-------------|
+| **Polyglot stack** | **Go** for high-throughput ingestion, **TypeScript/Express** for IO-heavy API + SSE, **Java** for Kafka-driven routing—each piece matches a typical responsibility in a distributed system. |
+| **gRPC + Protobuf** | Typed **`LocationPing`** on **`TrackerService`** (`ingestion-service/proto/tracker.proto`). |
+| **Kafka pipeline** | **`vehicle-locations`** into tracking; **`route-requests`** / **`route-updates`** for the route worker. |
+| **Idempotent writes** | Consumer uses **`ON CONFLICT (vehicle_id, timestamp) DO NOTHING`** (`tracking-service/src/consumers/locationConsumer.ts`) with a **unique** constraint from migrations. |
+| **Redis cache-aside** | **`GET /tracking/:id`** reads Redis first, falls back to Postgres, then repopulates cache with **86400s** expiry (`tracking-service/src/api/createApp.ts`). |
+| **A* routing** | `AStar.shortestPath` on a `RoadGraph` built from `SanFranciscoRoadNetwork` (**19 nodes**, Haversine edge weights; depot **`sf-hub`**) — `route-service/src/main/java/com/nexus/route/graph/`. |
+| **Distributed lock** | **`setIfAbsent`** on `lock:route:{vehicleId}` for **10s** before optimizing (`RouteOptimizer.java`). |
+| **SSE streaming** | In-memory client set; **`event: connected`**, **`event: location-update`**, **`:ping` every 15s`** (`tracking-service/src/realtime/sseHub.ts`). |
+| **Smooth map UX** | Client-side interpolation, bearing, speed ring, trails after repeated updates (`frontend/src/components/Map/VehicleLayer.tsx`). |
+| **AI command bar** | **`useFleetAi`** → **`POST /api/ai/chat`** with **`format: json`**, model **`gemma4:e2b`**, fleet context from the **same** live stream hook—no second EventSource (`frontend/src/lib/useFleetAi.ts`). |
+| **Command-center UI** | Dark **`--cc-*`** theme, **CARTO** `dark_all`, health + live feed panels (`frontend/src/app/page.tsx`, `globals.css`). |
+| **Vehicle simulator** | **`go run ./cmd/simulator`**: **10** vehicles (**4** trucks, **2** buses, **4** aircraft) on looped routes; gRPC metadata **`x-vehicle-type`**; flags **`-tick`** (default **1500ms**), **`-addr`** (default **localhost:50051**), **`-speed`**, **`-aircraft-speed`** (`ingestion-service/cmd/simulator/main.go`). |
+| **Observability** | **Prometheus** scrapes config under **`monitoring/prometheus/`**; **Grafana** provisioning + **Kafka UI** in Compose. |
+| **Kubernetes** | **Kustomize** under **`k8s/`** (deployments, services, ingress, **HPA** e.g. `k8s/hpa/tracking-hpa.yaml`). |
+| **CI** | **`.github/workflows/test.yaml`**: Go **vet** + **test** (runner Go **1.21**; module declares **1.23** in `go.mod`), tracking **Jest** + **TypeScript build**, route **`mvn test`** + **package** (includes **`@EmbeddedKafka`** consumer IT), frontend **ESLint** + **type-check** + **build** (Node **20**, JDK **17**). |
+
+---
+
+## Tech stack (by layer)
+
+| Layer | Technologies |
+|--------|----------------|
+| **Ingestion** | Go **1.23**, gRPC, Protocol Buffers, Kafka producer (`acks=all` in `ingestion-service/internal/kafka/producer.go`). |
+| **Tracking** | Node **20**, TypeScript, Express, kafkajs, ioredis, pg, prom-client. |
+| **Routing** | Java **17**, Spring Boot **3.1**, Spring Kafka, Redis, A* (`route-service/pom.xml`). |
+| **Frontend** | Next.js **16.1.1**, React **19**, Leaflet, TanStack Query, Tailwind, native **`EventSource`** (`frontend/package.json`). |
+| **AI** | Ollama on host; model **`gemma4:e2b`**; gateway **`/api/ai/`** → `host.docker.internal:11434` (`gateway/nginx.conf`). |
+| **Gateway** | Nginx: **`limit_req`** **100 r/s** (burst 50) on most `/api/*`, **10 r/s** on **`/api/metrics`**; dedicated SSE location with **proxy_buffering off**. |
+| **Infra** | Docker Compose (`docker-compose.yml`); Kustomize **`k8s/`**; GitHub Actions **`test.yaml`** + **`ci.yaml`**. |
+| **Load tests** | k6 scripts under **`benchmarks/k6/`** (Dockerized **`grafana/k6:0.56.0`** in `run-all.sh`). |
+
+---
+
+## Performance (measured)
+
+All numbers below come from **`benchmarks/k6/README.md`** (single recorded run: Docker Compose on **macOS**, k6 **0.56.0**, **60s** **`constant-vus`**). **HTTP scenarios hit tracking directly on `:3000`**—they bypass the gateway rate limiter.
+
+| Scenario | Tool | VUs | Throughput (iterations/s) | P50 | P95 | P99 |
+|----------|------|-----|----------------------------|-----|-----|-----|
+| gRPC unary `SendPing` | k6 `grpc_ingestion.js` | 25 | **~3402/s** | **7.12ms** | **8.62ms** | **10.37ms** |
+| HTTP Redis hot path | k6 `http_tracking_hit.js` | 40 | **~12471/s** | **2.63ms** | **5.57ms** | **7.66ms** |
+| HTTP 404 miss path | k6 `http_tracking_miss.js` | 40 | **~7850/s** | **4.63ms** | **7.34ms** | **9.42ms** |
+
+Averages from the same run: gRPC **`grpc_req_duration` avg 7.28ms**; cache-hit HTTP avg **3.16ms**; 404-path HTTP avg **5.05ms**. gRPC uses **k6/net/grpc** (connection-per-VU pattern as in the scripts). For methodology, artifacts, and the note on **`http_req_failed`** vs **404** checks, read **`benchmarks/k6/README.md`** and run:
 
 ```bash
-# Clone and start everything
+cd benchmarks/k6
+bash run-all.sh
+```
+
+---
+
+## AI command bar
+
+Users type fleet questions in the dashboard. The client calls **`POST /api/ai/chat`** on the gateway with **`format: json`** and model **`gemma4:e2b`** (`frontend/src/lib/fleetAiTypes.ts`, `useFleetAi.ts`). Ollama returns JSON actions (`filter_by_type`, `zoom_to`, `highlight_vehicles`, etc.); the map applies them. **Live vehicle summaries** in the system prompt are built from **`useLiveVehicleStream`** (max **30** vehicles)—no extra streaming connection.
+
+**Example queries:** “show me all trucks” · “zoom to Seattle” · “how many buses are active” · “find stopped vehicles” · “highlight sim-truck-01” · “show everything” (reset phrases are also handled client-side without calling the model).
+
+**Requirements:** Ollama running locally, **`ollama pull gemma4:e2b`**, gateway able to reach **`host.docker.internal:11434`** (see **[Getting Started](GETTING_STARTED.md)**). **No cloud APIs, no API keys, no usage billing**—optional and fully local.
+
+---
+
+## Repository layout
+
+| Path | Purpose |
+|------|---------|
+| **`ingestion-service/`** | Go gRPC server, Kafka producer, **`cmd/simulator`**, **`cmd/client`**, **`cmd/bench`**, proto. |
+| **`tracking-service/`** | Express API, Kafka consumer, Redis/Postgres, **`src/realtime/sseHub.ts`**, migrations. |
+| **`route-service/`** | Spring Boot route worker, **A\*** graph package, Kafka consumers, tests with **EmbeddedKafka**. |
+| **`frontend/`** | Next.js dashboard, map, AI hooks, Tailwind. |
+| **`gateway/`** | **`nginx.conf`** — API proxy, SSE, Ollama, rate limits. |
+| **`monitoring/`** | Prometheus + Grafana provisioning. |
+| **`k8s/`** | Kustomize manifests (deployments, services, ingress, HPA). |
+| **`benchmarks/`** | **`benchmarks/k6/`** (Dockerized k6, **`run-all.sh`**); **`benchmarks/run-all.sh`** — **`curl`** loops against the gateway and appends **`docs/PERFORMANCE.md`**. |
+| **`docs/`** | **`docs/images/`**, **`PERFORMANCE.md`** (generated when you run **`benchmarks/run-all.sh`**). |
+| **`.github/workflows/`** | **`test.yaml`**, **`ci.yaml`** (Docker build + `kustomize build`). |
+| **`GETTING_STARTED.md`** | Step-by-step setup for new contributors. |
+
+---
+
+## Quick start
+
+```bash
 git clone https://github.com/preethamdandu/NexusLogistics.git
 cd NexusLogistics
 docker compose up -d
-
-# ✅ That's it! Open http://localhost:3002
+cd ingestion-service && go run ./cmd/simulator
 ```
 
-### Verify Installation
-
-```bash
-# Check all services are healthy
-docker ps --format "table {{.Names}}\t{{.Status}}"
-
-# Example (your uptime strings will differ):
-# NAMES               STATUS
-# frontend            Up 2 minutes
-# gateway             Up 2 minutes
-# tracking-service    Up 2 minutes
-# ingestion-service   Up 2 minutes
-# route-service       Up 2 minutes
-# kafka               Up 2 minutes
-# redis               Up 2 minutes
-# nexus_postgres      Up 2 minutes
-# grafana             Up 2 minutes
-# prometheus          Up 2 minutes
-# kafka-ui            Up 2 minutes
-# zookeeper           Up 2 minutes
-```
-
-### Access Points
-
-| Service | URL | What You'll See |
-|---------|-----|-----------------|
-| 🖥️ **Dashboard** | [localhost:3002](http://localhost:3002) | Fleet tracking map |
-| 📊 **Grafana** | [localhost:3001](http://localhost:3001) | Metrics (admin/admin) |
-| 📈 **Prometheus** | [localhost:9090](http://localhost:9090) | Raw metrics |
-| 📬 **Kafka UI** | [localhost:8080](http://localhost:8080) | Message browser |
-| 🌐 **API** | [localhost:80](http://localhost:80) | Gateway endpoint |
-
----
-
-## 🏗️ Architecture
-
-### System Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                               NEXUS LOGISTICS                                   │
-│                                                                                 │
-│  ┌─────────────┐        ┌──────────────────────────────────────────────────┐   │
-│  │             │        │              API GATEWAY (Nginx)                 │   │
-│  │   FRONTEND  │◄───────┤         Rate Limiting • Load Balancing           │   │
-│  │  (Next.js)  │        │                    :80                           │   │
-│  │    :3002    │        └────────────┬─────────────────┬───────────────────┘   │
-│  └─────────────┘                     │                 │                       │
-│                                      ▼                 ▼                       │
-│  ┌────────────────────────────────────┐   ┌────────────────────────────────┐   │
-│  │     INGESTION SERVICE (Go)         │   │   TRACKING SERVICE (Node.js)   │   │
-│  │  ┌───────────────────────────┐     │   │  ┌───────────────────────┐     │   │
-│  │  │ gRPC Server • Kafka Prod  │     │   │  │ REST API • Kafka Cons │     │   │
-│  │  │ Proto: LocationPing       │     │   │  │ Write-Through Cache   │     │   │
-│  │  └───────────────────────────┘     │   │  └───────────────────────┘     │   │
-│  │           :50051                   │   │          :3000                 │   │
-│  └───────────────┬────────────────────┘   └──────────────┬─────────────────┘   │
-│                  │                                        │                     │
-│  ════════════════╪════════════════════════════════════════╪═══════════════════  │
-│                  ▼                                        ▼                     │
-│  ┌──────────────────────────────────────────────────────────────────────────┐   │
-│  │                          APACHE KAFKA (Event Bus)                        │   │
-│  │                                                                          │   │
-│  │   📍 vehicle-locations    📦 route-requests    🗺️ route-updates          │   │
-│  └──────────────────────────────────────────────────────────────────────────┘   │
-│                                       │                                         │
-│  ════════════════════════════════════╪════════════════════════════════════════  │
-│                                      ▼                                          │
-│  ┌────────────────────────────────────┐   ┌─────────────────────────────────┐   │
-│  │      ROUTE SERVICE (Java)          │   │         DATA LAYER              │   │
-│  │  ┌───────────────────────────┐     │   │                                 │   │
-│  │  │ A* Algorithm              │     │   │   ┌─────────┐  ┌────────────┐   │   │
-│  │  │ Distributed Lock (Redis)  │     │   │   │  Redis  │  │ PostgreSQL │   │   │
-│  │  │ Spring Boot Worker        │     │   │   │  :6379  │  │   :5432    │   │   │
-│  │  └───────────────────────────┘     │   │   └─────────┘  └────────────┘   │   │
-│  │           :8081                    │   │     Cache          Persistence  │   │
-│  └────────────────────────────────────┘   └─────────────────────────────────┘   │
-│                                                                                 │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                              OBSERVABILITY                                      │
-│         ┌──────────────┐              ┌──────────────┐                         │
-│         │  Prometheus  │─────────────►│   Grafana    │                         │
-│         │    :9090     │   scrapes    │    :3001     │                         │
-│         └──────────────┘              └──────────────┘                         │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow
-
-```mermaid
-sequenceDiagram
-    participant 🚗 as Vehicle
-    participant 📥 as Ingestion
-    participant 📨 as Kafka
-    participant 📍 as Tracking
-    participant 💾 as Redis
-    participant 🗄️ as Postgres
-    participant 👤 as Client
-
-    🚗->>📥: gRPC LocationPing
-    Note over 📥: Validates & batches
-    📥->>📨: Produce message
-    📨->>📍: Consume message
-    par Async Write
-        📍->>💾: SET vehicle:id:latest
-        📍->>🗄️: INSERT location
-    end
-    👤->>📍: GET /tracking/{id}
-    📍->>💾: GET vehicle:id:latest
-    💾-->>📍: Cache HIT (< 1ms)
-    📍-->>👤: JSON Response
-```
-
----
-
-## 🧠 Tech Decisions
-
-> **Why this tech stack?** Every choice was made to optimize for specific requirements.
-
-### Language Choices
-
-| Service | Language | Why This Choice |
-|---------|----------|-----------------|
-| **Ingestion** | Go | Minimal latency, excellent concurrency with goroutines, small memory footprint. Perfect for high-throughput data ingestion. |
-| **Tracking** | Node.js | Fast I/O, great Kafka/Redis libraries, easy async patterns. Ideal for cache-heavy read operations. |
-| **Route** | Java | Mature algorithms libraries, robust error handling, enterprise-ready. Best for complex business logic. |
-| **Frontend** | Next.js | SSR for SEO, React ecosystem, excellent DX. Great for real-time dashboards. |
-
-### Protocol Choices
-
-| Interface | Protocol | Why This Choice |
-|-----------|----------|-----------------|
-| **Vehicle → Ingestion** | gRPC | 10x smaller than JSON, code generation, bi-directional streaming |
-| **Client → API** | REST | Universal compatibility, easy debugging, browser-friendly |
-| **Service → Service** | Kafka | Decoupled, persistent, replayable, handles backpressure |
-
-### Database Choices
-
-| Store | Technology | Why This Choice |
-|-------|------------|-----------------|
-| **Cache** | Redis | Sub-millisecond reads, TTL support, atomic operations |
-| **Persistence** | PostgreSQL | ACID compliance, JSON support, battle-tested reliability |
-| **Events** | Kafka | Ordered logs, consumer groups, exactly-once semantics |
-
----
-
-## 📡 API Reference
-
-### Base URL
-```
-http://localhost/api
-```
-
-### Endpoints
-
-<details>
-<summary><strong>GET /tracking/{vehicle_id}</strong> - Get vehicle location</summary>
-
-**Request**
-```http
-GET /api/tracking/vehicle-123
-```
-
-**Response** `200 OK`
-```json
-{
-  "vehicle_id": "vehicle-123",
-  "latitude": 37.7749,
-  "longitude": -122.4194,
-  "timestamp": "2026-01-09T21:30:00Z",
-  "speed": 45.5,
-  "heading": 180,
-  "cached": true,
-  "cache_age_ms": 142
-}
-```
-
-**Error** `404 Not Found`
-```json
-{
-  "error": "Vehicle not found",
-  "vehicle_id": "vehicle-999"
-}
-```
-
-</details>
-
-<details>
-<summary><strong>POST /route/calculate</strong> - Request route optimization</summary>
-
-**Request**
-```http
-POST /api/route/calculate
-Content-Type: application/json
-
-{
-  "vehicle_id": "vehicle-123",
-  "origin": { "lat": 37.7749, "lng": -122.4194 },
-  "destination": { "lat": 37.3382, "lng": -121.8863 },
-  "constraints": {
-    "avoid_highways": false,
-    "max_duration_minutes": 120
-  }
-}
-```
-
-**Response** `202 Accepted`
-```json
-{
-  "request_id": "route-req-abc123",
-  "status": "processing",
-  "estimated_completion_seconds": 5
-}
-```
-
-</details>
-
-<details>
-<summary><strong>GET /health</strong> - System health check</summary>
-
-**Response** `200 OK`
-```json
-{
-  "status": "healthy",
-  "uptime_seconds": 3600,
-  "services": {
-    "kafka": { "status": "connected", "lag": 0 },
-    "redis": { "status": "connected", "memory_mb": 12.4 },
-    "postgres": { "status": "connected", "connections": 5 }
-  }
-}
-```
-
-</details>
-
-<details>
-<summary><strong>GET /live/all</strong> - Get all live vehicles (aircraft, trucks, buses)</summary>
-
-**Request**
-```http
-GET /api/live/all
-```
-
-**Response** `200 OK`
-```json
-[
-  {
-    "vehicle_id": "aircraft-UAL123",
-    "type": "aircraft",
-    "latitude": 37.6213,
-    "longitude": -122.3790,
-    "callsign": "UAL123",
-    "altitude": 35000
-  },
-  {
-    "vehicle_id": "truck-sf-01",
-    "type": "truck",
-    "latitude": 37.7749,
-    "longitude": -122.4194,
-    "route": "SF Hub"
-  },
-  {
-    "vehicle_id": "bus-muni-14",
-    "type": "bus",
-    "latitude": 37.7850,
-    "longitude": -122.4060,
-    "route": "SF Muni"
-  }
-]
-```
-
-</details>
-
-<details>
-<summary><strong>GET /live/aircraft</strong> - Real-time aircraft from OpenSky Network</summary>
-
-**Response** `200 OK` - Returns up to 100 aircraft over continental US
-```json
-[
-  {
-    "vehicle_id": "aircraft-DAL456",
-    "type": "aircraft",
-    "latitude": 40.6413,
-    "longitude": -73.7781,
-    "callsign": "DAL456",
-    "altitude": 28000,
-    "velocity": 450
-  }
-]
-```
-
-</details>
-
----
-
-## ⚡ Performance
-
-All numbers below are measured on this repo with k6 against a local Docker Compose stack. Reproduce them with `benchmarks/k6/run-all.sh`. Methodology and raw output live in `benchmarks/k6/README.md`.
-
-**Environment:** Docker Desktop on macOS, single host, services reached via published ports. HTTP scenarios target `tracking-service:3000` directly to measure service throughput without the gateway rate limiter in the path. The gateway's `limit_req` behavior is tested separately in `gateway-bench/`.
-
-### Sustained load (60s, k6)
-
-| Scenario | Tool | VUs | Throughput | P50 | P95 | P99 |
-|----------|------|-----|--------------|-----|-----|-----|
-| gRPC `SendPing` → ingestion | k6 grpc | 25 | 3,402 RPS | 7.12ms | 8.62ms | 10.37ms |
-| HTTP `GET /tracking/:id` (cache hit) | k6 http | 40 | 12,471 RPS | 2.63ms | 5.57ms | 7.66ms |
-| HTTP `GET /tracking/:id` (404 lookup path) | k6 http | 40 | 7,850 RPS | 4.63ms | 7.34ms | 9.42ms |
-
-All scripted checks passed 100%. The 404 lookup path scenario's `http_req_failed` metric is elevated by design because unique IDs return HTTP 404; this is documented in `benchmarks/k6/http_tracking_miss.js` and `benchmarks/k6/README.md`.
-
-### Notes
-
-- The gRPC client keeps one connection per VU (established on `__ITER === 0`). An earlier version opened and closed a connection per iteration and saturated ephemeral ports under load — if you see `connection refused`, check that you're on the current script.
-- HTTP scenarios bypass the Nginx gateway intentionally. Nginx enforces a 100 r/s `limit_req` per IP on `/api/*` paths, which would dominate the measurements. To observe the rate limiter in action, use `gateway-bench/`.
-- These numbers reflect a single laptop running every service, Kafka, Redis, and Postgres simultaneously in Docker. Dedicated infrastructure would produce higher numbers; they are not published here because they have not been measured.
-
----
-
-## ☸️ Deployment
-
-### Docker Compose (Development)
-
-```bash
-docker-compose up -d
-```
-
-### Kubernetes (Production)
-
-```bash
-# 1. Enable Kubernetes in Docker Desktop
-
-# 2. Install Ingress Controller
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
-
-# 3. Deploy NexusLogistics
-kubectl apply -k k8s/
-
-# 4. Verify
-kubectl get pods -n nexus-logistics
-```
-
-### Cloud Providers
-
-<details>
-<summary><strong>AWS EKS</strong></summary>
-
-```bash
-# Prerequisites: eksctl, aws-cli configured
-eksctl create cluster --name nexus --region us-west-2
-kubectl apply -k k8s/
-```
-
-</details>
-
-<details>
-<summary><strong>GCP GKE</strong></summary>
-
-```bash
-# Prerequisites: gcloud configured
-gcloud container clusters create nexus --zone us-central1-a
-kubectl apply -k k8s/
-```
-
-</details>
-
----
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-<details>
-<summary><strong>🔴 Port already in use</strong></summary>
-
-```bash
-# Find what's using port 3002
-lsof -i :3002
-
-# Kill the process
-kill -9 <PID>
-
-# Or use different ports
-PORT=3003 docker-compose up frontend
-```
-
-</details>
-
-<details>
-<summary><strong>🔴 Kafka connection failed</strong></summary>
-
-```bash
-# Check if Kafka is healthy
-docker logs kafka 2>&1 | tail -20
-
-# Restart Kafka
-docker-compose restart kafka
-
-# Wait for broker to be ready (30s)
-sleep 30 && docker-compose up -d
-```
-
-</details>
-
-<details>
-<summary><strong>🔴 Frontend shows "Active Vehicles: 0"</strong></summary>
-
-This is expected if no vehicle data has been ingested. Send test data:
-
-```bash
-# Run the test client
-cd ingestion-service/cmd/client
-go run main.go
-```
-
-</details>
-
-<details>
-<summary><strong>🔴 Redis cache misses are high</strong></summary>
-
-```bash
-# Check Redis memory
-docker exec redis redis-cli INFO memory | grep used_memory_human
-
-# Increase Redis memory limit in docker-compose.yml
-# Add: command: redis-server --maxmemory 256mb
-```
-
-</details>
-
-### Logs & Debugging
-
-```bash
-# View all service logs
-docker-compose logs -f
-
-# View specific service
-docker-compose logs -f tracking-service
-
-# Enter container shell
-docker exec -it tracking-service sh
-```
-
----
-
-## 📁 Project Structure
-
-```
-nexus-logistics/
-├── 🎨 frontend/              # Next.js 15 Dashboard
-│   ├── src/app/              # App router pages
-│   ├── src/components/       # React components
-│   └── Dockerfile
-├── 📦 ingestion-service/     # Go gRPC Service
-│   ├── cmd/server/           # Main entry
-│   ├── cmd/client/           # Test client
-│   ├── cmd/bench/            # Benchmarking
-│   ├── proto/                # Protocol Buffers
-│   └── Dockerfile
-├── 📍 tracking-service/      # Node.js REST API
-│   ├── src/                  # TypeScript source
-│   ├── migrations/           # SQL schemas
-│   └── Dockerfile
-├── 🧠 route-service/         # Java Spring Boot
-│   ├── src/main/java/        # Java source
-│   └── Dockerfile
-├── 🌐 gateway/               # Nginx config
-├── 📊 monitoring/            # Prometheus + Grafana
-├── ☸️ k8s/                   # Kubernetes manifests
-├── 🔄 .github/workflows/     # CI/CD
-└── 🐳 docker-compose.yml     # Local orchestration
-```
-
----
-
-## 🤝 Contributing
-
-We love contributions! Here's how to get started:
-
-```bash
-# 1. Fork the repo
-
-# 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/nexus-logistics.git
-
-# 3. Create a feature branch
-git checkout -b feature/amazing-feature
-
-# 4. Make your changes and test
-docker-compose up -d
-docker-compose logs -f
-
-# 5. Commit with conventional commits
-git commit -m "feat(tracking): add vehicle speed calculation"
-
-# 6. Push and open a PR
-git push origin feature/amazing-feature
-```
-
-### Commit Convention
-
-| Prefix | Description |
-|--------|-------------|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation |
-| `refactor` | Code refactoring |
-| `test` | Adding tests |
-| `perf` | Performance improvement |
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  <strong>Built with ❤️ for distributed systems enthusiasts</strong>
-</p>
-
-<p align="center">
-  <a href="https://github.com/preethamdandu/NexusLogistics/issues">🐛 Report Bug</a> •
-  <a href="https://github.com/preethamdandu/NexusLogistics/issues">✨ Request Feature</a> •
-  <a href="https://github.com/preethamdandu/NexusLogistics/discussions">💬 Discussions</a>
-</p>
-
-<p align="center">
-  <sub>If this project helped you, consider giving it a ⭐</sub>
-</p>
+Open **http://localhost:3002** in your browser (frontend → gateway **`NEXT_PUBLIC_API_URL=http://localhost:80`**). For prerequisites (Docker RAM, Go, Ollama, health checks, observability URLs), use **[Getting Started](GETTING_STARTED.md)**.
