@@ -21,7 +21,13 @@ func main() {
 		kafkaBrokers = "localhost:9092"
 	}
 	topic := "vehicle-locations"
-	port := ":50051"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "50051"
+	}
+	if port[0] != ':' {
+		port = ":" + port
+	}
 
 	// Initialize Kafka Producer
 	log.Printf("Connecting to Kafka at %s...", kafkaBrokers)

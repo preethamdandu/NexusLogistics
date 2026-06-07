@@ -1,0 +1,148 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    server_tokens off;
+
+    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=100r/s;
+    limit_req_zone $binary_remote_addr zone=strict_limit:10m rate=10r/s;
+    limit_req_status 429;
+
+    client_max_body_size 1m;
+    client_body_buffer_size 16k;
+    client_body_timeout 10s;
+    client_header_timeout 10s;
+    send_timeout 10s;
+
+    upstream tracking_service {
+        server ${TRACKING_HOSTPORT};
+    }
+
+    upstream route_service {
+        server ${ROUTE_HOSTPORT};
+    }
+
+    server {
+        listen ${PORT};
+        server_name _;
+
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+        error_page 429 = @rate_limit_exceeded;
+        location @rate_limit_exceeded {
+            default_type application/json;
+            return 429 '{"error":"rate_limit_exceeded","message":"Too many requests"}';
+        }
+
+        location /health {
+            add_header Content-Type application/json;
+            return 200 '{"status":"healthy","platform":"render"}';
+        }
+
+        location ^~ /api/health/route {
+            add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}" always;
+            proxy_pass http://route_service/actuator/health;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/tracking/ {
+            limit_req zone=api_limit burst=50 delay=20;
+            add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}" always;
+            add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "Content-Type" always;
+            if ($request_method = OPTIONS) {
+                add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}";
+                add_header Access-Control-Allow-Methods "GET, OPTIONS";
+                add_header Access-Control-Allow-Headers "Content-Type";
+                add_header Content-Length 0;
+                return 204;
+            }
+            proxy_pass http://tracking_service/tracking/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/vehicles {
+            limit_req zone=api_limit burst=50 delay=20;
+            add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}" always;
+            add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+            if ($request_method = OPTIONS) {
+                add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}";
+                add_header Access-Control-Allow-Methods "GET, OPTIONS";
+                add_header Content-Length 0;
+                return 204;
+            }
+            proxy_pass http://tracking_service/vehicles;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location = /api/routes/calculate {
+            limit_req zone=api_limit burst=50 delay=20;
+            add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}" always;
+            add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "Content-Type" always;
+            proxy_pass http://route_service/calculate;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location ^~ /api/routes/ {
+            limit_req zone=api_limit burst=50 delay=20;
+            add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}" always;
+            add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
+            add_header Access-Control-Allow-Headers "Content-Type" always;
+            proxy_pass http://route_service/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location ^~ /api/ai/ {
+            default_type application/json;
+            return 503 '{"error":"ai_unavailable","message":"AI is disabled on Render"}';
+        }
+
+        location = /api/live/stream {
+            add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}" always;
+            add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+            proxy_pass http://tracking_service/live/stream;
+            proxy_set_header Host $host;
+            proxy_set_header Connection '';
+            proxy_http_version 1.1;
+            chunked_transfer_encoding off;
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 3600s;
+        }
+
+        location /api/live/ {
+            limit_req zone=api_limit burst=50 delay=20;
+            add_header Access-Control-Allow-Origin "${CORS_ALLOW_ORIGIN}" always;
+            add_header Access-Control-Allow-Methods "GET, OPTIONS" always;
+            proxy_pass http://tracking_service/live/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Prometheus metrics are not exposed on the public gateway.
+        location /api/metrics {
+            default_type application/json;
+            return 403 '{"error":"forbidden","message":"metrics are internal-only"}';
+        }
+
+        location ~* \.(git|env|sql|bak|old|backup|swp)$ {
+            return 404;
+        }
+
+        location ~ /\. {
+            return 404;
+        }
+    }
+}

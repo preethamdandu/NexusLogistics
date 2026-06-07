@@ -1,0 +1,9 @@
+FROM nginx:alpine
+
+RUN apk add --no-cache gettext
+
+COPY nginx.render.conf.template /etc/nginx/templates/nginx.render.conf.template
+COPY docker-entrypoint.render.sh /docker-entrypoint.render.sh
+RUN chmod +x /docker-entrypoint.render.sh
+
+ENTRYPOINT ["/docker-entrypoint.render.sh"]

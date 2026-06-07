@@ -1,0 +1,139 @@
+# NexusLogistics backend on Render (gateway + microservices + Redpanda + managed Postgres/Redis).
+# Deploy: Render Dashboard → New → Blueprint → connect this repo.
+# Then point Vercel NEXT_PUBLIC_API_URL at https://<nexus-gateway>.onrender.com
+
+databases:
+  - name: nexus-postgres
+    databaseName: nexus_logistics
+    user: nexus
+    plan: free
+    # Empty list = only other Render services in this account can reach Postgres (no public internet).
+    ipAllowList: []
+
+services:
+  - type: keyvalue
+    name: nexus-redis
+    plan: free
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru
+
+  - type: pserv
+    name: nexus-kafka
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./deploy/render/redpanda/Dockerfile
+    dockerContext: ./deploy/render/redpanda
+    envVars:
+      - key: PORT
+        value: "9092"
+
+  - type: pserv
+    name: nexus-ingestion
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./ingestion-service/Dockerfile
+    dockerContext: ./ingestion-service
+    envVars:
+      - key: KAFKA_BROKERS
+        fromService:
+          type: pserv
+          name: nexus-kafka
+          property: hostport
+
+  - type: pserv
+    name: nexus-tracking
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./tracking-service/Dockerfile.render
+    dockerContext: ./tracking-service
+    envVars:
+      - key: RUN_MIGRATIONS
+        value: "true"
+      - key: KAFKA_BROKERS
+        fromService:
+          type: pserv
+          name: nexus-kafka
+          property: hostport
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nexus-postgres
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: nexus-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: nexus-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: keyvalue
+          name: nexus-redis
+          property: password
+
+  - type: pserv
+    name: nexus-route
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./route-service/Dockerfile
+    dockerContext: ./route-service
+    envVars:
+      - key: KAFKA_BROKERS
+        fromService:
+          type: pserv
+          name: nexus-kafka
+          property: hostport
+      - key: REDIS_HOST
+        fromService:
+          type: keyvalue
+          name: nexus-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: keyvalue
+          name: nexus-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: keyvalue
+          name: nexus-redis
+          property: password
+
+  - type: web
+    name: nexus-gateway
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./gateway/Dockerfile.render
+    dockerContext: ./gateway
+    healthCheckPath: /health
+    envVars:
+      - key: TRACKING_HOSTPORT
+        fromService:
+          type: pserv
+          name: nexus-tracking
+          property: hostport
+      - key: ROUTE_HOSTPORT
+        fromService:
+          type: pserv
+          name: nexus-route
+          property: hostport
+      # REQUIRED: exact browser origin of your Vercel app (scheme + host, no trailing slash).
+      # Example: https://nexus-logistics.vercel.app
+      - key: CORS_ALLOW_ORIGIN
+        sync: false
+
+  - type: worker
+    name: nexus-simulator
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./deploy/render/simulator/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: GRPC_ADDR
+        fromService:
+          type: pserv
+          name: nexus-ingestion
+          property: hostport
